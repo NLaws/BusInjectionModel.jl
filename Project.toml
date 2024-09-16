@@ -1,7 +1,7 @@
 name = "BusInjectionModel"
 uuid = "20cea600-32a0-4edf-8dad-2de078d2a706"
 authors = ["Nick Laws <laws.nick@gmail.com> and contributors"]
-version = "1.0.0-DEV"
+version = "0.1.0"
 
 [compat]
 julia = "1.10"
