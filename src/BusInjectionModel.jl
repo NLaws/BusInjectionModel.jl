@@ -4,7 +4,7 @@ module BusInjectionModel
 using CommonOPF
 using JuMP
 using LinearAlgebra
-
+using Graphs
 
 """
     ModelType
@@ -19,10 +19,13 @@ end
 
 export
     build_bim!,
-    FixedPointLinear
+    FixedPointLinear,
+    admittance_builder,
 
 
 include("single_phase_model.jl")
 include("single_phase_fpl_model.jl")
+include("multi_phase_fpl_model.jl")
+include("utilities.jl")
 
 end
