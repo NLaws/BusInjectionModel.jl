@@ -14,12 +14,14 @@ An enum with values:
 """
 @enum ModelType begin
     FixedPointLinear  # only SinglePhase
+    Unrelaxed
 end
 
 
 export
     build_bim!,
-    FixedPointLinear
+    FixedPointLinear,
+    Unrelaxed
 
 
 include("single_phase_model.jl")

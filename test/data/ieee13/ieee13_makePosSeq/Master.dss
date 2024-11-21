@@ -1,17 +1,19 @@
 Clear
 Set DefaultBaseFreq=60
 New Circuit.ieee13nodeckt
+~ basekv=2.4 pu=1.05 phases=1 bus1=650  
+~ MVAsc3=20000 MVASC1=20000    ! stiffen the source to approximate inf source
 
-Set Cktmodel=Positive
-
-Redirect Vsource.dss
 Redirect LineCode.dss
 Redirect Line.dss
 Redirect Load.dss
 Redirect Transformer.dss
-Redirect RegControl.dss
 !Redirect Capacitor.dss
 MakeBusList
-Redirect BusVoltageBases.dss  ! set voltage bases
-BusCoords BusCoords.dss
+Set Voltagebases=(4.16, 0.480)
+
+
+Batchedit Load..* vminpu=0.8 vmaxpu=1.2  ! ensure that load model stays constant power
+Set MinIteration=500
+Set MaxIter=500  ! default is 15, not enough to get load matching
 calcv
