@@ -3,7 +3,7 @@
 
 Notation:
 - ``s_j`` net complex power injection at node ``j``
-- ``\\mathcal{N}` set of all nodes in network
+- ``\mathcal{N}` set of all nodes in network
 - ``v_j`` voltage at node ``j``
 
 ```math

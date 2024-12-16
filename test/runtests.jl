@@ -73,8 +73,8 @@ SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "
         for b in keys(vs)
             @test abs(vs[b] - dss_voltages[b][1]) < 1e-3
         end
-        # TODO bus 634 voltage is worse than others by two orders of magnitude: can we improve the
-        # transformer model?
+        # NOTE bus 634 voltage is worse than others by two orders of magnitude because the
+        # transformer model in CommonOPF is crude compared to the OpenDSS model.
 
     end
     
