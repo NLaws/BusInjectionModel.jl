@@ -1,14 +1,14 @@
 
 
-"""
-    build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{FixedPointLinear})
+# """
+#     build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{FixedPointLinear})
 
-Add variables and constraints to `m` using the values in `net` to make an FixedPointLinear branch flow
-model. Calls the following functions:
-- [`add_bim_variables`](@ref)
-- [`constrain_voltage`](@ref)
-```
-"""
+# Add variables and constraints to `m` using the values in `net` to make an FixedPointLinear branch flow
+# model. Calls the following functions:
+# - [`add_bim_variables`](@ref)
+# - [`constrain_voltage`](@ref)
+# ```
+# """
 function build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{FixedPointLinear})
     add_bim_variables(m, net)
     # constrain_voltage(m, net)

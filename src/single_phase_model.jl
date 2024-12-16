@@ -1,14 +1,19 @@
 """
     build_bim!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=FixedPointLinear)
 
-Top-level multiphase builder that dispatches the ModelType enum
+Top-level model builder that dispatches the ModelType enum
 """
 function build_bim!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=FixedPointLinear)
     build_bim!(m::JuMP.AbstractModel, net::Network, Val(mtype))
 end
 
 
+"""
+    build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
 
+Model builder for single-phase, unrelaxed BIM. See the 
+    [Single Phase Bus Injection Model (Unrelaxed)](@ref) math for details.
+"""
 function build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
     T = net.Ntimesteps
 
