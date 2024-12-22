@@ -1,9 +1,9 @@
 """
-    build_bim!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=FixedPointLinear)
+    build_bim!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=Unrelaxed)
 
 Top-level model builder that dispatches the ModelType enum
 """
-function build_bim!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=FixedPointLinear)
+function build_bim!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=Unrelaxed)
     build_bim!(m::JuMP.AbstractModel, net::Network, Val(mtype))
 end
 
@@ -11,7 +11,7 @@ end
 """
     build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
 
-Model builder for single-phase, unrelaxed BIM. See the 
+Model builder for single-phase, unrelaxed BIM with rectangular voltage variables. See the 
     [Single Phase Bus Injection Model (Unrelaxed)](@ref) math for details.
 """
 function build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
