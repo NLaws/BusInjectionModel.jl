@@ -22,7 +22,7 @@ SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "
     # @testset "IEEE13 wye only fixed point linear" begin
     #     m = Model(HiGHS.Optimizer)
     #     net = BusInjectionModel.CommonOPF.dss_to_Network(SINGLE_PHASE_IEEE13_DSS_PATH)
-    #     build_bim!(m, net, FixedPointLinear)
+    #     build_bim_rectangular!(m, net, FixedPointLinear)
     # end
 
     @testset "IEEE13 single phase Unrelaxed model" begin
@@ -47,7 +47,7 @@ SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "
         # net.bounds.v_upper_mag = net.v0 * 1.2
         # net.bounds.v_lower_mag = net.v0 * 0.7
 
-        build_bim!(m, net, Unrelaxed)
+        build_bim_rectangular!(m, net, Unrelaxed)
         M = 1e7
         @constraint(m, [t in 1:net.Ntimesteps], M >= real(m[:s0][t]) >= -M)
         @constraint(m, [t in 1:net.Ntimesteps], M >= imag(m[:s0][t]) >= -M)

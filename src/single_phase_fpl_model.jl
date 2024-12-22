@@ -1,7 +1,7 @@
 
 
 # """
-#     build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{FixedPointLinear})
+#     build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{FixedPointLinear})
 
 # Add variables and constraints to `m` using the values in `net` to make an FixedPointLinear branch flow
 # model. Calls the following functions:
@@ -9,7 +9,7 @@
 # - [`constrain_voltage`](@ref)
 # ```
 # """
-function build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{FixedPointLinear})
+function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{FixedPointLinear})
     add_bim_variables(m, net)
     # constrain_voltage(m, net)
 end
@@ -38,6 +38,7 @@ end
 function constrain_voltage(m::JuMP.AbstractModel, net::Network{SinglePhase})
     v = m[:v]
     N = length(busses(net))
+    # TODO get fixed point voltage from Unrelaxed BIM? (will require putting non linear solver in dependencies)
 
     # Bernstein & Dall'anese 2017 equ. 5b, 9b, 9c
     for t = 1:net.Ntimesteps

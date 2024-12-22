@@ -1,20 +1,24 @@
 """
-    build_bim!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=Unrelaxed)
+    build_bim_rectangular!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=Unrelaxed)
 
 Top-level model builder that dispatches the ModelType enum
 """
-function build_bim!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=Unrelaxed)
-    build_bim!(m::JuMP.AbstractModel, net::Network, Val(mtype))
+function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network, mtype::ModelType=Unrelaxed)
+    build_bim_rectangular!(m::JuMP.AbstractModel, net::Network, Val(mtype))
 end
 
 
 """
-    build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
+    build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
 
 Model builder for single-phase, unrelaxed BIM with rectangular voltage variables. See the 
     [Single Phase Bus Injection Model (Unrelaxed)](@ref) math for details.
+
+Adds the variables:
+- `m[:v]` with complex values for all busses in `CommonOPF.busses(net)`
+- `m[:s0]` for the complex slack bus power injection
 """
-function build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
+function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
     T = net.Ntimesteps
 
     add_time_vector_variables!(m, net, :v, busses(net); set=ComplexPlane)
@@ -53,3 +57,7 @@ function build_bim!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unre
     end
 
 end
+
+
+# TODO the polar model from LoadFlow.jl and see if we need LoadFlow.jl by solving the polar model
+# with Ipopt instead of fixed point iterations. Question is: which one is best at-scale?

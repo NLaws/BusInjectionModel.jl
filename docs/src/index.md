@@ -18,7 +18,7 @@ using Ipopt
 
 m = JuMP.Model(Ipopt.Optimizer)
 net = CommonOPF.Network("path/to/network/yaml-or-opendss-file")
-BusInjectionModel.build_bim!(m, net, Unrelaxed)
+BusInjectionModel.build_bim_rectangular!(m, net, Unrelaxed)
 # set objective
 optimize!(m)
 ```

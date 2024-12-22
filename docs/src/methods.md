@@ -1,4 +1,4 @@
 # Methods
 ```@docs
-build_bim!
+build_bim_rectangular!
 ```
