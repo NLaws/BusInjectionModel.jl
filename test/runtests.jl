@@ -38,6 +38,7 @@ SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "
         dss_voltages = CPF.dss_voltages_pu()
 
         m = Model(Ipopt.Optimizer)
+        set_optimizer_attribute(m, "print_level", 0)
         net = BusInjectionModel.CommonOPF.dss_to_Network(SINGLE_PHASE_IEEE13_DSS_PATH)
         # need to get rid of the substation regulator?
         net.v0 = [dss_voltages["650"][1] + im*0]
@@ -75,6 +76,69 @@ SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "
         end
         # NOTE bus 634 voltage is worse than others by two orders of magnitude because the
         # transformer model in CommonOPF is crude compared to the OpenDSS model.
+
+    end
+
+    @testset  "McCalley ISU example" begin
+        # three busses in a triangle: a slack bus, a PV generator bus, and a PQ load bus
+
+        netdict = Dict(
+            :Network => Dict(:substation_bus => "1", :Sbase => 1),
+            :Conductor => [
+                Dict(
+                    :busses => ("1", "2"),
+                    :r1 => 0.0,
+                    :x1 => 0.1,
+                    :length => 1
+                ),
+                Dict(
+                    :busses => ("2", "3"),
+                    :r1 => 0.0,
+                    :x1 => 0.1,
+                    :length => 1
+                ),
+                Dict(
+                    :busses => ("3", "1"),
+                    :r1 => 0.0,
+                    :x1 => 0.1,
+                    :length => 1
+                ),
+            ],
+            :Load => [
+                Dict(
+                    :bus => "3",
+                    :kws1 => [.0028653],
+                    :kvars1 => [.0012244]
+                ),
+            ],
+            :Generator => [
+                Dict(
+                    :bus => "2",
+                    :is_PV_bus => true,
+                    :voltage_pu => [1.05],
+                    :kws1 => [0.0006661]
+                )
+            ]
+        )
+        
+        net = CPF.Network(netdict)
+        
+        m = JuMP.Model(Ipopt.Optimizer)
+        set_optimizer_attribute(m, "print_level", 0)
+
+        build_bim_polar!(m, net)
+
+        optimize!(m)
+        @test termination_status(m) in [MOI.OPTIMAL, MOI.ALMOST_OPTIMAL, MOI.LOCALLY_SOLVED]
+
+        v_mag =  value.([(values(m[:v_mag])...)...])
+        v_ang =  value.([(values(m[:v_ang])...)...])
+
+        tol = 1e-3
+        @test v_mag[2] ≈ 1.05 rtol = tol
+        @test v_ang[2] * 180/pi ≈ -3 rtol = tol
+        @test v_mag[3] ≈ 0.9499 rtol = tol
+        @test v_ang[3] * 180/pi ≈ -10.01 rtol = tol
 
     end
     

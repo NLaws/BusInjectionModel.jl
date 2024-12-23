@@ -19,6 +19,7 @@ end
 
 
 export
+    build_bim_polar!,
     build_bim_rectangular!,
     FixedPointLinear,
     Unrelaxed
