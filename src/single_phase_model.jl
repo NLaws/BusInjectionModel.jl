@@ -73,6 +73,14 @@ end
     build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
 
 
+Model builder for single-phase, unrelaxed BIM with polar voltage variables. See the 
+    [Single Phase Bus Injection Model (Unrelaxed)](@ref) math for details.
+    
+Adds the variables:
+- `m[:v_mag]` for all busses in `CommonOPF.busses(net)`
+- `m[:v_ang]` for all busses in `CommonOPF.busses(net)`
+- `m[:p0]` and `m[:q0]` for the slack bus power injection
+- `m[:q_gen]` for any P-V busses (via the `CommonOPF.Generator`)
 """
 function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
     T = net.Ntimesteps
@@ -100,6 +108,8 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     @constraint(m, [t in 1:T], v_ang[net.substation_bus][t] == 0.0)
     @variable(m, p0[1:T])
     @variable(m, q0[1:T])
+    push!(net.var_names, :p0)
+    push!(net.var_names, :q0)
 
     # busses with known power injections
     @constraint(m, con_real_power[j in real_load_busses(net), t in 1:T],
@@ -131,6 +141,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     #P-V bus Q variables and voltage constraints
     if !isempty(generator_busses(net))
         add_time_vector_variables!(m, net, :q_gen, generator_busses(net))
+        push!(net.var_names, :q_gen)
 
         for j in generator_busses(net)
 
