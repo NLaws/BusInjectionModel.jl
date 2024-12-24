@@ -41,7 +41,7 @@ SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "
         set_optimizer_attribute(m, "print_level", 0)
         net = BusInjectionModel.CommonOPF.dss_to_Network(SINGLE_PHASE_IEEE13_DSS_PATH)
         # need to get rid of the substation regulator?
-        net.v0 = [dss_voltages["650"][1] + im*0]
+        net.v0 = dss_voltages["650"][1] + im*0
         net.Vbase = 4160 / sqrt(3)
         net.Sbase = 1e7
         net.Zbase = net.Vbase^2 / net.Sbase
@@ -79,7 +79,7 @@ SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "
 
     end
 
-    @testset  "McCalley ISU example" begin
+    @testset  "McCalley ISU example single phase polar voltage" begin
         # three busses in a triangle: a slack bus, a PV generator bus, and a PQ load bus
 
         netdict = Dict(

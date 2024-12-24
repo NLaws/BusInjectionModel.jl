@@ -40,7 +40,7 @@ function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{SinglePhase}
             )
 
             @constraint(m, [t in 1:T],
-                v[j][t] == net.v0[t]
+                v[j][t] == net.v0
             )
             continue
         end
