@@ -15,6 +15,7 @@ import OpenDSSDirect as OpenDSS
 CPF = BusInjectionModel.CommonOPF
 
 SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "Master.dss")
+MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.dss")
 
 
 @testset "BusInjectionModel.jl" begin
@@ -142,4 +143,74 @@ SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "
 
     end
     
+    @testset "IEEE13 multiphase Unrelaxed model" begin
+
+        # get the OpenDSS voltages for comparison and setting v0
+        OpenDSS.Text.Command("Redirect $MULTIPHASE_IEEE13_DSS_PATH")
+        OpenDSS.Solution.Solve()
+
+        @test(OpenDSS.Solution.Converged() == true)
+        @test(CPF.check_opendss_powers() == true)
+
+        dss_voltages = CPF.dss_voltages_pu()
+
+        net = CPF.dss_to_Network(MULTIPHASE_IEEE13_DSS_PATH)
+        net.v0 = dss_voltages["650"][1]
+        net.Vbase = 4160 / sqrt(3)
+        net.Sbase = 1e6
+        net.Zbase = net.Vbase^2 / net.Sbase
+        # net.bounds.v_upper_mag = net.v0 * 1.1
+        # net.bounds.v_lower_mag = net.v0 * 0.8
+
+
+        m = Model(Ipopt.Optimizer)
+        set_optimizer_attribute(m, "print_level", 0)
+
+
+        build_bim_rectangular!(m, net, Unrelaxed)
+
+        # add bounds
+        # TODO more automated bounds and good defaults
+        M = 1e3
+        @constraint(m, [t in 1:net.Ntimesteps], M .>= real(m[:s0][net.substation_bus][t]) .>= -M)
+
+        @constraint(m, [t in 1:net.Ntimesteps], M .>= imag(m[:s0][net.substation_bus][t]) .>= -M)
+
+        non_sub_busses = setdiff(CPF.busses(net), [net.substation_bus])
+        # NOTE that the real and imaginary voltage parts can be negative
+        @constraint(m, 
+            [b in non_sub_busses, t in 1:net.Ntimesteps, phs in CPF.phases_connected_to_bus(net, b)], 
+            1.1 >= imag(m[:v][b][t][phs]) >= -1.1
+        )
+        @constraint(m, 
+            [b in non_sub_busses, t in 1:net.Ntimesteps, phs in CPF.phases_connected_to_bus(net, b)],
+            1.5 .>= real(m[:v][b][t][phs]) .>= -1.1
+        )
+
+        @objective(m, Min, sum( 
+            real(m[:s0][net.substation_bus][t][phs]).^2 
+            + imag(m[:s0][net.substation_bus][t][phs]).^2  
+            for t in 1:net.Ntimesteps, phs in 1:3) 
+        )
+
+        optimize!(m)
+        @test termination_status(m) in [MOI.OPTIMAL, MOI.ALMOST_OPTIMAL, MOI.LOCALLY_SOLVED]
+
+        ## for inspecting values
+        # vs = value.([(((values(values(m[:v]))...)...)...)...])
+        # v_mags = abs.(vs)
+        # s0 = value.(m[:s0][net.substation_bus][1])
+
+        r = CPF.opf_results(m, net)
+        
+        # remove time indices from results for convenience
+        vs = Dict(b => abs.(vv[1]) for (b, vv) in pairs(r[:v]))
+        
+        for b in keys(vs)
+            for (i, phsv) in enumerate(filter(v -> v != 0, vs[b]))
+                @test abs(phsv - dss_voltages[b][i]) < 2e-4
+            end
+        end
+        
+    end
 end
