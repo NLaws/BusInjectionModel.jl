@@ -1,34 +1,3 @@
-
-
-# TODO injection_at_bus is in BranchFlowModel.jl too; move it to CommonOPF and put _per_unit in name
-"""
-    injection_at_bus(j::String, net::Network{MultiPhase})::Tuple{Vector{Vector{<:Real}}, Vector{Vector{<:Real}}}
-
-return the real and reactive power injections as vectors with 3 phase indices and net.Ntimesteps time
-indices like:
-```julia
-Pj, Qj = injection_at_bus(my_bus, net)
-...
-Pj[phase][time_step]
-```
-"""
-function injection_at_bus(j::String, net::Network{MultiPhase})::Tuple{Vector{Vector{<:Real}}, Vector{Vector{<:Real}}}
-    Pj = [zeros(net.Ntimesteps) for _ in 1:3] # first dim is phase, like Pj[phs][t]
-    Qj = [zeros(net.Ntimesteps) for _ in 1:3]
-    if j in real_load_busses(net)
-        for phs in 1:3
-            Pj[phs] = -net[j, :kws, phs] * 1e3 / net.Sbase
-        end
-    end
-    if j in reactive_load_busses(net)
-        for phs in 1:3 
-            Qj[phs] = -net[j, :kvars, phs] * 1e3 / net.Sbase
-        end
-    end
-    return Pj, Qj
-end
-
-
 """
     build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{MultiPhase}, ::Val{Unrelaxed})
 
@@ -91,7 +60,7 @@ function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{MultiPhase},
             continue
         end
 
-        Pj, Qj = injection_at_bus(j, net)
+        Pj, Qj = power_injection_vector_pu(j, net)
         Sj = Pj + im * Qj
         Sj = hcat(Sj...)  # time X phase
 
