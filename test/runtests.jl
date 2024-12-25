@@ -80,11 +80,18 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
 
     end
 
-    @testset  "McCalley ISU example single phase polar voltage" begin
+    @testset  "McCalley ISU example: single-phase, 3-bus, polar voltage" begin
         # three busses in a triangle: a slack bus, a PV generator bus, and a PQ load bus
 
         netdict = Dict(
-            :Network => Dict(:substation_bus => "1", :Sbase => 1),
+            :Network => Dict(
+                :substation_bus => "1", 
+                :Sbase => 1,
+                :v_upper_mag => 1.1,
+                :v_lower_mag => 0.9,
+                :v_upper_ang => π,
+                :v_lower_ang => -π,
+            ),
             :Conductor => [
                 Dict(
                     :busses => ("1", "2"),
@@ -123,6 +130,11 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
         )
         
         net = CPF.Network(netdict)
+        # TODO these four tests should be in CommonOPF
+        @test net.bounds.v_upper_mag == 1.1
+        @test net.bounds.v_lower_mag == 0.9
+        @test net.bounds.v_upper_ang == π
+        @test net.bounds.v_lower_ang == -π
         
         m = JuMP.Model(Ipopt.Optimizer)
         set_optimizer_attribute(m, "print_level", 0)
@@ -143,7 +155,7 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
 
     end
     
-    @testset "IEEE13 multiphase Unrelaxed model" begin
+    @testset "IEEE13 multiphase Unrelaxed rectangular model" begin
 
         # get the OpenDSS voltages for comparison and setting v0
         OpenDSS.Text.Command("Redirect $MULTIPHASE_IEEE13_DSS_PATH")
@@ -159,9 +171,6 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
         net.Vbase = 4160 / sqrt(3)
         net.Sbase = 1e6
         net.Zbase = net.Vbase^2 / net.Sbase
-        # net.bounds.v_upper_mag = net.v0 * 1.1
-        # net.bounds.v_lower_mag = net.v0 * 0.8
-
 
         m = Model(Ipopt.Optimizer)
         set_optimizer_attribute(m, "print_level", 0)

@@ -89,18 +89,27 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     v_mag = m[:v_mag]
     v_ang = m[:v_ang]
 
-    # voltage angles start at zero and between -π and π
-    for b in setdiff(busses(net), [net.substation_bus])
-        for t in 1:T
-            JuMP.set_start_value(v_ang[b][t], 0.0)
-            JuMP.set_lower_bound(v_ang[b][t], -π)
-            JuMP.set_upper_bound(v_ang[b][t], π)
-            if !(b in generator_busses(net))
-                JuMP.set_start_value(v_mag[b][t], 1.0)
-                JuMP.set_lower_bound(v_mag[b][t], 0.9)
-                JuMP.set_upper_bound(v_mag[b][t], 1.1)
+    # voltage angles start at zero, magnitudes at 1.0
+    for b in setdiff(busses(net), [net.substation_bus]), t in 1:T
+
+        JuMP.set_start_value(v_ang[b][t], 0.0)
+        if !ismissing(net.bounds.v_lower_ang)
+            JuMP.set_lower_bound(v_ang[b][t], net.bounds.v_lower_ang)
+        end
+        if !ismissing(net.bounds.v_upper_ang)
+            JuMP.set_upper_bound(v_ang[b][t], net.bounds.v_upper_ang)
+        end
+
+        if !(b in generator_busses(net))
+            JuMP.set_start_value(v_mag[b][t], 1.0)
+            if !ismissing(net.bounds.v_upper_mag)
+                JuMP.set_upper_bound(v_mag[b][t], net.bounds.v_upper_mag)
+            end
+            if !ismissing(net.bounds.v_lower_mag)
+                JuMP.set_lower_bound(v_mag[b][t], net.bounds.v_lower_mag)
             end
         end
+
     end
 
     # slack bus voltage and variables
