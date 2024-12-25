@@ -9,7 +9,6 @@ Adds the variables:
 - `m[:s0]` for the complex slack bus power injection
 """
 function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{MultiPhase}, ::Val{Unrelaxed})
-    Tr = phases_of_vector  # "Tr" for transform
     T = net.Ntimesteps
     v = m[:v] = multiphase_bus_variable_container()
     # bus net power injection vectors
@@ -67,12 +66,12 @@ function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{MultiPhase},
         phases = phases_connected_to_bus(net, j)
         # have to down-select to phases to avoid bad constraints like 0 = (1.7 - 0.8im)
         @constraint(m, [t in 1:T],
-            Tr(Sj[t, :], phases) .== Tr(sum(
+            Sj[t, phases] .== sum(
                 diag(
                     v[j][t] * cj( v[j][t]  - phi_ij(j, net, v[k][t]) ) * cj(yij_per_unit(j, k, net))
-                )
+                )[phases]
                 for k in connected_busses(j, net)
-            ), phases)
+            )
         )    
     end
 
