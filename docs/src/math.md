@@ -36,3 +36,25 @@ Notation:
 &\angle v_{\text{substation bus}} = 0
 \end{aligned}
 ```
+
+# Multi-Phase Bus Injection Model (Unrelaxed)
+
+## Rectangular voltage variables
+Notation:
+- ``\boldsymbol s_j`` net complex power injection at bus ``j``, vector of phases
+- ``\Phi_{j}`` phases connected to bus ``j`` (take sub-set of vector)
+- ``\boldsymbol v_j^{\Phi_{jk}}`` complex voltage vector at bus ``j`` for the phases connected to
+  bus ``k``
+- ``k: j \sim k`` set of busses connected to bus ``j``
+- ``H`` conjugate transpose
+- ``\boldsymbol Y_{jk}^H`` phase admittance matrix for busses ``j`` and ``k``
+
+
+```math
+\begin{aligned}
+\boldsymbol s_j^{\Phi_{j}} = \sum_{k: j \sim k} \text{diag} \left(  
+     \boldsymbol v_j^{\Phi_{jk}} \left[ \boldsymbol v_j^{\Phi_{jk}} - \boldsymbol v_k^{\Phi_{jk}}  \right]^H \boldsymbol Y_{jk}^H
+\right)
+\quad \forall j \in \mathcal{N}
+\end{aligned}
+```
