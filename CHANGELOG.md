@@ -1,6 +1,6 @@
 # BusInjectionModel Change log
 
-## dev Add MultiPhase models
+## v0.1.1
 - add multiphase rectangular model
 
 ## v0.1.0 First release 
