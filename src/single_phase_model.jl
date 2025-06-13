@@ -24,13 +24,14 @@ function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{SinglePhase}
     add_time_vector_variables!(m, net, :v, busses(net); set=ComplexPlane)
     v = m[:v]
     @variable(m, set = ComplexPlane(), s0[1:T])
+    m[:bus_power_injection_constraints] = Dict()
 
     # s_j = sum_{k: j~k} Y[j,k]^* ( |v_j|^2 - v_j v_k^*)
     for j in busses(net)
 
         if j == net.substation_bus
 
-            @constraint(m, [t in 1:T],
+            m[:bus_power_injection_constraints][j] = @constraint(m, [t in 1:T],
                 s0[t] == sum(
                     conj(yij_per_unit(j, k, net)) * (
                         real( v[j][t] )^2 + imag( v[j][t] )^2 - v[j][t] * conj(v[k][t])
@@ -45,7 +46,7 @@ function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{SinglePhase}
             continue
         end
 
-        @constraint(m, [t in 1:T],
+        m[:bus_power_injection_constraints][j] = @constraint(m, [t in 1:T],
             sj_per_unit(j, net)[t] == sum(
                 conj(yij_per_unit(j, k, net)) * (
                     real( v[j][t] )^2 + imag( v[j][t] )^2 - v[j][t] * conj(v[k][t])
@@ -56,6 +57,31 @@ function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{SinglePhase}
     
     end
 
+    # document the variables
+    net.var_info[:v] = CommonOPF.VariableInfo(
+        :v,
+        "complex voltage vector",
+        CommonOPF.VoltUnit,
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+    )
+
+    net.var_info[:s0] = CommonOPF.VariableInfo(
+        :s0,
+        "complex net bus power injection at the net.substation_bus",
+        CommonOPF.ComplexPowerUnit,
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+    )
+
+    # document the constraints
+    c = m[:bus_power_injection_constraints][net.substation_bus][1]  # time step 1
+    net.constraint_info[:bus_power_injection_constraints] = CommonOPF.ConstraintInfo(
+        :bus_power_injection_constraints,
+        "net power injection definition at each bus",
+        typeof(MOI.get(m, MOI.ConstraintSet(), c)),
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension),
+    )
+
+    nothing
 end
 
 

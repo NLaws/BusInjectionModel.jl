@@ -1,6 +1,6 @@
 # Multiphase Models
 BusInjectionModel.jl provides methods to build many different variations of the Branch Flow Model,
-including single phase and multiphase models. Each of the model types supported are documented below.
+including single phase and multiphase models. Each of the multihpase model types supported are documented below.
 ```@contents
 Pages = ["multi_phase_models.md"]
 Depth = 2
