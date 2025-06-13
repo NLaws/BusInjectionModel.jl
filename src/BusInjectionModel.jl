@@ -11,6 +11,7 @@ using LinearAlgebra
 
 An enum with values:
 1. `FixedPointLinear`
+2. `Unrelaxed`
 """
 @enum ModelType begin
     FixedPointLinear  # only SinglePhase

@@ -8,6 +8,7 @@ makedocs(
     workdir = joinpath(@__DIR__, ".."),
     pages = [
         "User Documentation" => "index.md",
+        "Models" => ["single_phase_models.md", "multi_phase_models.md"],
         "Methods" => "methods.md",
         "Math" => "math.md"
     ],

@@ -10,15 +10,17 @@ This package is part of a federation of packages to support OPF modeling:
 - [BranchFlowModel](https://github.com/NLaws/BranchFlowModel.jl), which provides a similar interface
   to BusInjectionModel.jl.
 
-```julia
-using BusInjectionModel
-using CommonOPF
-using JuMP
-using Ipopt
+# Inputs
+Inputs are defined using [`CommonOPF.Network` structs](https://nlaws.github.io/CommonOPF.jl/stable/network/). 
 
-m = JuMP.Model(Ipopt.Optimizer)
-net = CommonOPF.Network("path/to/network/yaml-or-opendss-file")
-BusInjectionModel.build_bim_rectangular!(m, net, Unrelaxed)
-# set objective
-optimize!(m)
+
+# Building a Model
+Building a `BranchFlBusInjectionModelowModel` requires three things:
+1. a JuMP Model,
+2. a `CommonOPF.Network`, and
+3. the type of model to be built, i.e. one of the [`BusInjectionModel.ModelType`](@ref)
+```@docs
+BusInjectionModel.ModelType
 ```
+To build a model see [`build_bim_rectangular!`](@ref) and [`build_bim_polar!`](@ref)
+

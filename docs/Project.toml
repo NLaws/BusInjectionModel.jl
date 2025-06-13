@@ -1,4 +1,6 @@
 [deps]
 BusInjectionModel = "20cea600-32a0-4edf-8dad-2de078d2a706"
+CommonOPF = "dad7ea18-2b21-482e-81c1-e84414cc4b03"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
