@@ -114,6 +114,20 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     v_mag = m[:v_mag]
     v_ang = m[:v_ang]
 
+    # document the variables
+    net.var_info[:v_mag] = CommonOPF.VariableInfo(
+        :v_mag,
+        "voltage magnitude",
+        CommonOPF.VoltUnit,
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+    )
+    net.var_info[:v_ang] = CommonOPF.VariableInfo(
+        :v_ang,
+        "voltage angle",
+        CommonOPF.RadiansUnit,
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+    )
+
     # voltage angles start at zero, magnitudes at 1.0
     for b in setdiff(busses(net), [net.substation_bus]), t in 1:T
 
@@ -144,6 +158,20 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     @variable(m, q0[1:T])
     push!(net.var_names, :p0)
     push!(net.var_names, :q0)
+
+    # document the variables
+    net.var_info[:p0] = CommonOPF.VariableInfo(
+        :p0,
+        "real net bus power injection at the net.substation_bus",
+        CommonOPF.RealPowerUnit,
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+    )
+    net.var_info[:q0] = CommonOPF.VariableInfo(
+        :q0,
+        "reactive net bus power injection at the net.substation_bus",
+        CommonOPF.ReactivePowerUnit,
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+    )
 
     # busses with known power injections
     @constraint(m, con_real_power[j in real_load_busses(net), t in 1:T],
