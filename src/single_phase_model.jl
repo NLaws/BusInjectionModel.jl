@@ -72,7 +72,6 @@ end
 """
     build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
 
-
 Model builder for single-phase, unrelaxed BIM with polar voltage variables. See the 
     [Single Phase Bus Injection Model (Unrelaxed)](@ref) math for details.
     

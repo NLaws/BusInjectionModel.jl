@@ -222,4 +222,50 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
         end
         
     end
+
+#     @testset "IEEE 8500 Node" begin
+#         # PROBLEM IS INFEASIBLE
+#         net = CPF.Network_IEEE8500()
+#         net.Vbase = 12470 / sqrt(3)
+#         net.Sbase = 1e9
+#         net.Zbase = net.Vbase^2 / net.Sbase
+
+
+#         if !(@isdefined GRB_ENV)  # the whole point is to only create GRB_ENV once per Julia session
+#             const GRB_ENV = Gurobi.Env()
+#         end
+#         m = Model(() -> Gurobi.Optimizer(GRB_ENV))
+
+#         m = Model(Ipopt.Optimizer)
+
+#         build_bim_rectangular!(m, net, Unrelaxed)
+
+
+#         # add bounds
+#         # TODO more automated bounds and good defaults
+#         M = 1e9
+#         @constraint(m, [t in 1:net.Ntimesteps], M .>= real(m[:s0][net.substation_bus][t]) .>= -M)
+
+#         @constraint(m, [t in 1:net.Ntimesteps], M .>= imag(m[:s0][net.substation_bus][t]) .>= -M)
+
+#         non_sub_busses = setdiff(CPF.busses(net), [net.substation_bus])
+#         # NOTE that the real and imaginary voltage parts can be negative
+#         @constraint(m, 
+#             [b in non_sub_busses, t in 1:net.Ntimesteps, phs in CPF.phases_connected_to_bus(net, b)], 
+#             1.1 >= imag(m[:v][b][t][phs]) >= -1.1
+#         )
+#         @constraint(m, 
+#             [b in non_sub_busses, t in 1:net.Ntimesteps, phs in CPF.phases_connected_to_bus(net, b)],
+#             1.5 .>= real(m[:v][b][t][phs]) .>= -1.1
+#         )
+
+#         @objective(m, Min, sum( 
+#             real(m[:s0][net.substation_bus][t][phs]).^2 
+#             + imag(m[:s0][net.substation_bus][t][phs]).^2  
+#             for t in 1:net.Ntimesteps, phs in 1:3) 
+#         )
+
+#         optimize!(m)
+
+#     end
 end
