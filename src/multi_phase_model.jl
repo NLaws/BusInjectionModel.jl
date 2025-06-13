@@ -43,7 +43,7 @@ function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{MultiPhase},
         end
     end
 
-    # s_j = sum_{k: j~k} Y[j,k]^* ( |v_j|^2 - v_j v_k^*)
+    # s_j = sum_{k: j~k} (Z[j,k]^{-1})^* ( |v_j|^2 - v_j v_k^*)
     for j in busses(net)
 
         if j == net.substation_bus
@@ -59,14 +59,13 @@ function build_bim_rectangular!(m::JuMP.AbstractModel, net::Network{MultiPhase},
             continue
         end
 
-        Pj, Qj = sj_per_unit(j, net)
-        Sj = Pj + im * Qj
-        Sj = hcat(Sj...)  # time X phase
+        sj = sj_per_unit(j, net)
+        sj = hcat(sj...)  # time X phase
 
         phases = phases_connected_to_bus(net, j)
         # have to down-select to phases to avoid bad constraints like 0 = (1.7 - 0.8im)
         @constraint(m, [t in 1:T],
-            Sj[t, phases] .== sum(
+            sj[t, phases] .== sum(
                 diag(
                     v[j][t] * cj( v[j][t]  - phi_ij(j, net, v[k][t]) ) * cj(yij_per_unit(j, k, net))
                 )[phases]
