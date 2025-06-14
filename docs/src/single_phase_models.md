@@ -54,11 +54,13 @@ The math underlying the model is as follows:
 \begin{aligned}
 &p_j =  |v_j| \sum_{i \in 1\dots\mathcal{N}} |v_i| \left[
     G_{\left[i,j\right]} \cos(\angle v_j - \angle v_i) + B_{\left[i,j\right]} \sin(\angle v_j - \angle v_i)
-    \right]  
+    \right]
+    \quad \forall j \in \mathcal{N}
 \\
 &q_j =  |v_j| \sum_{i \in 1\dots\mathcal{N}} |v_i| \left[
     G_{\left[i,j\right]} \sin(\angle v_j - \angle v_i) - B_{\left[i,j\right]} \cos(\angle v_j - \angle v_i)
-    \right]  
+    \right]
+    \quad \forall j \in \mathcal{N}
 \\
 &|v_{\text{substation bus}}| = v_0 
 \\

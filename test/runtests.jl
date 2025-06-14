@@ -146,12 +146,17 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
 
         v_mag =  value.([(values(m[:v_mag])...)...])
         v_ang =  value.([(values(m[:v_ang])...)...])
+        p =  value.([(values(m[:pj])...)...])
+        q =  value.([(values(m[:qj])...)...])
 
         tol = 1e-3
         @test v_mag[2] ≈ 1.05 rtol = tol
         @test v_ang[2] * 180/pi ≈ -3 rtol = tol
         @test v_mag[3] ≈ 0.9499 rtol = tol
         @test v_ang[3] * 180/pi ≈ -10.01 rtol = tol
+
+        @test p[2] ≈ net["2"][:Generator].kws1[1] * 1e3
+        @test q[3] ≈ -net["3"][:Load].kvars1[1] * 1e3
 
     end
     

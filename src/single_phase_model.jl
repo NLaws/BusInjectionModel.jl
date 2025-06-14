@@ -104,15 +104,26 @@ Model builder for single-phase, unrelaxed BIM with polar voltage variables. See 
 Adds the variables:
 - `m[:v_mag]` for all busses in `CommonOPF.busses(net)`
 - `m[:v_ang]` for all busses in `CommonOPF.busses(net)`
-- `m[:p0]` and `m[:q0]` for the slack bus power injection
+- `m[:pj]` and `m[:qj]` for the bus power injections
 - `m[:q_gen]` for any P-V busses (via the `CommonOPF.Generator`)
 """
 function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{Unrelaxed})
     T = net.Ntimesteps
+
     add_time_vector_variables!(m, net, :v_mag, busses(net))
     add_time_vector_variables!(m, net, :v_ang, busses(net))
+    add_time_vector_variables!(m, net, :pj, busses(net))
+    add_time_vector_variables!(m, net, :qj, busses(net))
+
     v_mag = m[:v_mag]
     v_ang = m[:v_ang]
+    p = m[:pj]
+    q = m[:qj]
+
+    push!(net.var_names, :v_mag)
+    push!(net.var_names, :v_ang)
+    push!(net.var_names, :pj)
+    push!(net.var_names, :qj)
 
     # document the variables
     net.var_info[:v_mag] = CommonOPF.VariableInfo(
@@ -125,6 +136,19 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         :v_ang,
         "voltage angle",
         CommonOPF.RadiansUnit,
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+    )
+
+    net.var_info[:pj] = CommonOPF.VariableInfo(
+        :pj,
+        "real net bus power injection ",
+        CommonOPF.RealPowerUnit,
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+    )
+    net.var_info[:qj] = CommonOPF.VariableInfo(
+        :qj,
+        "reactive net bus power injection",
+        CommonOPF.ReactivePowerUnit,
         (CommonOPF.BusDimension, CommonOPF.TimeDimension)
     )
 
@@ -154,28 +178,19 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     # slack bus voltage and variables
     @constraint(m, [t in 1:T], v_mag[net.substation_bus][t] == net.v0)
     @constraint(m, [t in 1:T], v_ang[net.substation_bus][t] == 0.0)
-    @variable(m, p0[1:T])
-    @variable(m, q0[1:T])
-    push!(net.var_names, :p0)
-    push!(net.var_names, :q0)
+    
+    # generator_busses are P-V busses: q_gen variable added and voltage set to
+    # net[j][:Generator].voltage_pu
+    gen_busses = generator_busses(net)
+    if !isempty(gen_busses)
+        add_time_vector_variables!(m, net, :q_gen, gen_busses)
+        push!(net.var_names, :q_gen)
+    end
 
-    # document the variables
-    net.var_info[:p0] = CommonOPF.VariableInfo(
-        :p0,
-        "real net bus power injection at the net.substation_bus",
-        CommonOPF.RealPowerUnit,
-        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
-    )
-    net.var_info[:q0] = CommonOPF.VariableInfo(
-        :q0,
-        "reactive net bus power injection at the net.substation_bus",
-        CommonOPF.ReactivePowerUnit,
-        (CommonOPF.BusDimension, CommonOPF.TimeDimension)
-    )
 
-    # busses with known power injections
-    @constraint(m, con_real_power[j in real_load_busses(net), t in 1:T],
-        real(sj_per_unit(j, net)[t]) == (
+    m[:bus_real_power_injection_constraints] = @constraint(
+        m, [j in busses(net), t in 1:T],
+        p[j][t] == (
             v_mag[j][t]
             * sum( v_mag[i][t] * (
                     real(Yij_per_unit(i, j, net)) # conductance
@@ -186,9 +201,9 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
             )
         )
     )
-
-    @constraint(m, con_reactive_power[j in reactive_load_busses(net), t in 1:T],
-        imag(sj_per_unit(j, net)[t]) == (
+    m[:bus_reactive_power_injection_constraints] = @constraint(
+        m, [j in busses(net), t in 1:T],
+        q[j][t] == (
             v_mag[j][t] 
             * sum( v_mag[i][t] * (
                     real(Yij_per_unit(i, j, net)) # conductance
@@ -200,44 +215,49 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         )
     )
 
-    #P-V bus Q variables and voltage constraints
-    if !isempty(generator_busses(net))
-        add_time_vector_variables!(m, net, :q_gen, generator_busses(net))
-        push!(net.var_names, :q_gen)
+    # document the constraints
+    c = m[:bus_real_power_injection_constraints][net.substation_bus, 1]  # time step 1
+    net.constraint_info[:bus_real_power_injection_constraints] = CommonOPF.ConstraintInfo(
+        :bus_real_power_injection_constraints,
+        "net real power injection definition at each bus",
+        typeof(MOI.get(m, MOI.ConstraintSet(), c)),
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension),
+    )
+    net.constraint_info[:bus_reactive_power_injection_constraints] = CommonOPF.ConstraintInfo(
+        :bus_reactive_power_injection_constraints,
+        "net reactive power injection definition at each bus",
+        typeof(MOI.get(m, MOI.ConstraintSet(), c)),
+        (CommonOPF.BusDimension, CommonOPF.TimeDimension),
+    )
 
-        for j in generator_busses(net)
+    # set the power injections to loads (can be zero) and include generators as applicable
+    # TODO maybe should not model Generators in CommonOPF? Only implemented in this model so far
+    for j in busses(net)
 
-            @constraint(m, [t in 1:T],
-                net[j][:Generator].kws1[t] * 1e3 / net.Sbase == (
-                    v_mag[j][t]
-                    * sum( v_mag[i][t] * (
-                            real(Yij_per_unit(i, j, net)) # conductance
-                        *   cos(v_ang[j][t] - v_ang[i][t])
-                        +   imag(Yij_per_unit(i, j, net)) # susceptance
-                        *   sin(v_ang[j][t] - v_ang[i][t])
-                    ) for i in union(connected_busses(j, net), [j])
-                    )
-                )
-            )
-
-            @constraint(m, [t in 1:T],
-                m[:q_gen][j][t] == (
-                    v_mag[j][t]
-                    * sum( v_mag[i][t] * (
-                            real(Yij_per_unit(i, j, net)) # conductance
-                        *   sin(v_ang[j][t] - v_ang[i][t])
-                        -   imag(Yij_per_unit(i, j, net)) # susceptance
-                        *   cos(v_ang[j][t] - v_ang[i][t])
-                    ) for i in union(connected_busses(j, net), [j])
-                    )
-                )
-            )
-
-            @constraint(m, [t in 1:T], v_mag[j][t] == net[j][:Generator].voltage_pu[t])
-
+        if j == net.substation_bus  # slack bus
+            continue
         end
-    end
 
+        sj = sj_per_unit(j, net)
+
+        if j in gen_busses
+            @constraint(m, [t in 1:T],
+                p[j][t] == net[j][:Generator].kws1[t] * 1e3 / net.Sbase + real(sj[t])
+            )
+            @constraint(m, [t in 1:T],
+                q[j][t] == m[:q_gen][j][t] + imag(sj[t])
+            )
+            @constraint(m, [t in 1:T], v_mag[j][t] == net[j][:Generator].voltage_pu[t])
+        else
+            @constraint(m, [t in 1:T],
+                p[j][t] == real(sj[t])
+            )
+            @constraint(m, [t in 1:T],
+                q[j][t] == imag(sj[t])
+            )
+        end
+
+    end
 
     nothing
 end
