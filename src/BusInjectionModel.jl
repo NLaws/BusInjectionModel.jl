@@ -4,6 +4,7 @@ module BusInjectionModel
 using CommonOPF
 using JuMP
 using LinearAlgebra
+using Printf
 
 
 """
@@ -22,12 +23,14 @@ end
 export
     build_bim_polar!,
     build_bim_rectangular!,
+    solve_fixed_point_to_tol,
     FixedPointLinear,
     Unrelaxed
 
 
 include("single_phase_model.jl")
 include("multi_phase_model.jl")
+include("multi_phase_linear_model.jl")
 # include("single_phase_fpl_model.jl")
 
 end

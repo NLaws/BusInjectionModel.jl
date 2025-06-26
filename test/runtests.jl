@@ -20,6 +20,8 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
 
 @testset "BusInjectionModel.jl" begin
 
+    include("test_fixed_point.jl")
+
     # @testset "IEEE13 wye only fixed point linear" begin
     #     m = Model(HiGHS.Optimizer)
     #     net = BusInjectionModel.CommonOPF.dss_to_Network(SINGLE_PHASE_IEEE13_DSS_PATH)
