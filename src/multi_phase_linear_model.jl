@@ -32,11 +32,20 @@ function add_complex_terminal_power_variable(m::JuMP.Model, net::Network{MultiPh
 end
 
 
+"""
+     add_or_update_fixed_point_cosnstraint(
+        m::JuMP.Model, 
+        net::Network{MultiPhase}, 
+        v_fp::Matrix{ComplexF64},
+    )
 
+Apply the fixed point voltage constraint to the model `m`. If `:fixed_point_con in keys(m.obj_dict)`
+then the existing constraints are deleted first.
+"""
 function add_or_update_fixed_point_cosnstraint(
-    m::JuMP.Model, 
-    net::Network{MultiPhase}, 
-    v_fp::Matrix{ComplexF64},
+        m::JuMP.Model, 
+        net::Network{MultiPhase}, 
+        v_fp::Matrix{ComplexF64},
     )
 
     v0 = substation_voltage(net)
@@ -62,7 +71,9 @@ end
 
 
 """
+    build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{FixedPointLinear})
 
+Build the fixed point linear model.
 """
 function build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{FixedPointLinear})
     Y, y_terminals = Ysparse(net)
@@ -81,15 +92,7 @@ function build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{F
     # TODO way to not make dense matrix?
     inv_Yll = m[:inv_Yll] = inv(Matrix(Y_ll)) / net.Zbase
 
-
-    @variable(m, v_fp[term in ll_terminals, t in 1:net.Ntimesteps], set=ComplexPlane());
-    # TODO method to update v_fp by deleting and redefining the following constraint
-    @constraint(m, v_fp_con[term in ll_terminals, t in 1:net.Ntimesteps],
-        v_fp[term, t] == v0[term.phase]
-    );
-
     N_ll = length(ll_indices)
-
     v_fp = ones(N_ll, net.Ntimesteps) * 0im
     for (i, term) in enumerate(ll_terminals), t in 1:net.Ntimesteps
         v_fp[i, t] = v0[term.phase]
@@ -107,29 +110,10 @@ function build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{F
         set_start_value(imag(v[term, t]), imag(v0[term.phase]))
     end
     
-
     # TODO s variable
     add_or_update_fixed_point_cosnstraint(m, net, v_fp)
-    # @constraint(m, [t in 1:net.Ntimesteps],
-    #     v .== -inv_Yll * Y_l0 * v0 .+ inv_Yll * diagm(conj(v_fp[:, t]))^-1 * s_fp[t, :]
-    # )
-
-    @objective(m, Min, sum(real(v[term, t]) for term in ll_terminals, t in 1:net.Ntimesteps))
 
     nothing
-    # optimize!(m)
-
-    # need Ybus, v_fixed_point, s_fixed_point
-    # given s_fixed_point can find v_fixed_point using feasibility model (initialized with flat
-    # voltage)
-    # use known injections as s_fixed_point
-    # store Ysparse in model
-    # fixed point values as parameters? MOI.Parameter can only be real values so will have to define
-    # real and imag Y parameters, like:
-    # @variable(m, Yreal[i=1:N, j=1:N], set=Parameter(real(Ysparse[i,j])))
-    # @variable(m, Yimag[i=1:N, j=1:N], set=Parameter(imag(Ysparse[i,j])))
-    # should compare performance with parameter vs. rebuilding with each iteration
-    # (and only need to change v_fixed_point typically, maybe some bounds on s_controlled)
 end
 
 

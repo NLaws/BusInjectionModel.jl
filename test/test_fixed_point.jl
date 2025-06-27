@@ -6,6 +6,8 @@
 
     build_bim_rectangular!(m, net, FixedPointLinear)
 
+    @objective(m, Min, sum(real(m[:v][term, t]) for term in m[:ll_terminals], t in 1:net.Ntimesteps))
+
     # using Logging
     # global_logger(ConsoleLogger(stderr, Logging.Debug))
 
@@ -22,7 +24,7 @@
 
     # compare to the unrelaxed solution
     m2 = Model(Ipopt.Optimizer)
-    JuMP.set_silent(m)
+    set_optimizer_attribute(m2, "print_level", 0)
 
     build_bim_rectangular!(m2, net, Unrelaxed)
 
