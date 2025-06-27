@@ -6,9 +6,21 @@
 # Can index JuMP variable on BusTerminal! but should I?
 
 
-function add_complex_terminal_voltage_variable(m::JuMP.Model, net::Network{MultiPhase})
-    ts = terminals(net)
-    @variable(m, v[ts, 1:net.Ntimesteps], set=ComplexPlane())
+"""
+    add_complex_terminal_voltage_variable(
+        m::JuMP.Model, 
+        net::Network{MultiPhase}, 
+        trmnls::Vector{CommonOPF.BusTerminal},
+    )
+
+Add a variable with symbol `:v` for the complex voltage indexed on `trmnls` and `1:net.Ntimesteps`
+"""
+function add_complex_terminal_voltage_variable(
+        m::JuMP.Model, 
+        net::Network{MultiPhase}, 
+        trmnls::Vector{CommonOPF.BusTerminal},
+    )
+    @variable(m, v[trmnls, 1:net.Ntimesteps], set=ComplexPlane())
 
     net.var_info[:v] = CommonOPF.VariableInfo(
         :v,
@@ -16,6 +28,7 @@ function add_complex_terminal_voltage_variable(m::JuMP.Model, net::Network{Multi
         CommonOPF.VoltUnit,
         (CommonOPF.BusTerminalDimension, CommonOPF.TimeDimension)
     )
+    return v
 end
 
 
@@ -33,7 +46,7 @@ end
 
 
 """
-     add_or_update_fixed_point_cosnstraint(
+     add_or_update_fixed_point_constraint(
         m::JuMP.Model, 
         net::Network{MultiPhase}, 
         v_fp::Matrix{ComplexF64},
@@ -42,7 +55,7 @@ end
 Apply the fixed point voltage constraint to the model `m`. If `:fixed_point_con in keys(m.obj_dict)`
 then the existing constraints are deleted first.
 """
-function add_or_update_fixed_point_cosnstraint(
+function add_or_update_fixed_point_constraint(
         m::JuMP.Model, 
         net::Network{MultiPhase}, 
         v_fp::Matrix{ComplexF64},
@@ -86,11 +99,11 @@ function build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{F
     ll_indices = m[:ll_indices] = [term.Y_index for term in ll_terminals]
 
     Y_ll = Y[ll_indices, ll_indices]
-    Y_l0 = m[:Y_l0] = Y[ll_indices, source_indices] * net.Zbase
+    m[:Y_l0] = Y[ll_indices, source_indices] * net.Zbase
     v0 = substation_voltage(net)
 
     # TODO way to not make dense matrix?
-    inv_Yll = m[:inv_Yll] = inv(Matrix(Y_ll)) / net.Zbase
+    m[:inv_Yll] = inv(Matrix(Y_ll)) / net.Zbase
 
     N_ll = length(ll_indices)
     v_fp = ones(N_ll, net.Ntimesteps) * 0im
@@ -102,16 +115,15 @@ function build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{F
     s_fp = terminals_sj_per_unit(net, y_terminals)[ll_indices]
     s_fp = hcat(s_fp...)
 
-
+    v = add_complex_terminal_voltage_variable(m, net, ll_terminals)
     # initialize voltage with v0
-    @variable(m, v[ll_terminals, 1:net.Ntimesteps], set=ComplexPlane())
     for term in ll_terminals, t in 1:net.Ntimesteps
         set_start_value(real(v[term, t]), real(v0[term.phase]))
         set_start_value(imag(v[term, t]), imag(v0[term.phase]))
     end
     
     # TODO s variable
-    add_or_update_fixed_point_cosnstraint(m, net, v_fp)
+    add_or_update_fixed_point_constraint(m, net, v_fp)
 
     nothing
 end
@@ -133,7 +145,7 @@ function solve_fixed_point_to_tol(m::JuMP.Model, net::Network{MultiPhase}, tol::
 
     # perform at least one iteration to get vdiff
     while iter <= max_iter && vdiff > tol
-        add_or_update_fixed_point_cosnstraint(m, net, v_prev.data)
+        add_or_update_fixed_point_constraint(m, net, v_prev.data)
         optimize!(m)
         v_now = value.(m[:v])
 
@@ -142,4 +154,13 @@ function solve_fixed_point_to_tol(m::JuMP.Model, net::Network{MultiPhase}, tol::
         v_prev = v_now
         @debug("iter $iter \t max_abs_diff $(@sprintf("%.6f", vdiff))")
     end
+
+    if vdiff > tol
+        @warn "Model not solved to tolerance of $tol. vdiff is $vdiff"
+
+    else
+        @info "Model solved to tolerance of $tol in $(iter-1) iterations."
+    end
+
+    nothing
 end

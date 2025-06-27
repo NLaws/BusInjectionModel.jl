@@ -8,5 +8,5 @@ Depth = 2
 ```@docs
 build_bim_rectangular!
 build_bim_polar!
-BusInjectionModel.add_or_update_fixed_point_cosnstraint
+BusInjectionModel.add_or_update_fixed_point_constraint
 ```
