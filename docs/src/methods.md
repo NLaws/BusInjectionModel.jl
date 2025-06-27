@@ -9,5 +9,6 @@ Depth = 2
 build_bim_rectangular!
 build_bim_polar!
 BusInjectionModel.add_or_update_fixed_point_constraint
+BusInjectionModel.add_complex_terminal_power_variable
 BusInjectionModel.add_complex_terminal_voltage_variable
 ```

@@ -32,9 +32,23 @@ function add_complex_terminal_voltage_variable(
 end
 
 
-function add_complex_terminal_power_variable(m::JuMP.Model, net::Network{MultiPhase})
-    ts = terminals(net)
-    @variable(m, s[ts, 1:net.Ntimesteps], set=ComplexPlane())
+"""
+    add_complex_terminal_power_variable(
+        m::JuMP.Model, 
+        net::Network{MultiPhase}, 
+        trmnls::Vector{CommonOPF.BusTerminal},
+    )
+
+Add an `:s` variable to the model. If the `net.bounds` for `s` missing the default bounds are zero
+(to keep the model bounded).
+
+"""
+function add_complex_terminal_power_variable(
+        m::JuMP.Model, 
+        net::Network{MultiPhase}, 
+        trmnls::Vector{CommonOPF.BusTerminal},
+    )
+    @variable(m, s[trmnls, 1:net.Ntimesteps], set=ComplexPlane())
 
     net.var_info[:s] = CommonOPF.VariableInfo(
         :s,
@@ -42,6 +56,51 @@ function add_complex_terminal_power_variable(m::JuMP.Model, net::Network{MultiPh
         CommonOPF.ComplexPowerUnit,
         (CommonOPF.BusTerminalDimension, CommonOPF.TimeDimension)
     )
+
+    s_upper_real = ismissing(net.bounds.s_upper_real) ? 0.0 : net.bounds.s_upper_real
+    s_lower_real = ismissing(net.bounds.s_lower_real) ? 0.0 : net.bounds.s_lower_real
+    s_upper_imag = ismissing(net.bounds.s_upper_imag) ? 0.0 : net.bounds.s_upper_imag
+    s_lower_imag = ismissing(net.bounds.s_lower_imag) ? 0.0 : net.bounds.s_lower_imag
+
+    @constraint(m, s_upper_real_con, real(s) .<= s_upper_real)
+    @constraint(m, s_lower_real_con, real(s) .>= s_lower_real)
+    @constraint(m, s_upper_imag_con, imag(s) .<= s_upper_imag)
+    @constraint(m, s_lower_imag_con, imag(s) .>= s_lower_imag)
+
+    # document the constraints
+    c = m[:s_upper_real_con][m[:ll_terminals][1], 1]  # time step 1
+    net.constraint_info[:s_upper_real_con] = CommonOPF.ConstraintInfo(
+        :s_upper_real_con,
+        "upper bound on real power injection variables",
+        typeof(MOI.get(m, MOI.ConstraintSet(), c)),
+        (CommonOPF.BusTerminalDimension, CommonOPF.TimeDimension)
+    )
+
+    c = m[:s_lower_real_con][m[:ll_terminals][1], 1]  # time step 1
+    net.constraint_info[:s_lower_real_con] = CommonOPF.ConstraintInfo(
+        :s_lower_real_con,
+        "lower bound on real power injection variables",
+        typeof(MOI.get(m, MOI.ConstraintSet(), c)),
+        (CommonOPF.BusTerminalDimension, CommonOPF.TimeDimension)
+    )
+
+    c = m[:s_upper_imag_con][m[:ll_terminals][1], 1]  # time step 1
+    net.constraint_info[:s_upper_imag_con] = CommonOPF.ConstraintInfo(
+        :s_upper_imag_con,
+        "upper bound on imaginary power injection variables",
+        typeof(MOI.get(m, MOI.ConstraintSet(), c)),
+        (CommonOPF.BusTerminalDimension, CommonOPF.TimeDimension)
+    )
+
+    c = m[:s_lower_imag_con][m[:ll_terminals][1], 1]  # time step 1
+    net.constraint_info[:s_lower_imag_con] = CommonOPF.ConstraintInfo(
+        :s_lower_imag_con,
+        "lower bound on imaginary power injection variables",
+        typeof(MOI.get(m, MOI.ConstraintSet(), c)),
+        (CommonOPF.BusTerminalDimension, CommonOPF.TimeDimension)
+    )
+
+    return s
 end
 
 
@@ -67,17 +126,20 @@ function add_or_update_fixed_point_constraint(
     s_fp = terminals_sj_per_unit(net, m[:y_terminals])[m[:ll_indices]]
     s_fp = hcat(s_fp...)
 
-    # TODO s variable
+    # delete existing constraints
     if :fixed_point_con in keys(m.obj_dict)
         for term in m[:ll_terminals], t in 1:net.Ntimesteps
             # TODO? should not have matrix in last dimension?
-            JuMP.delete(m, m[:fixed_point_con][t][term, 1])
+            JuMP.delete(m, m[:fixed_point_con][t][term, t])
         end
         delete!(m.obj_dict, :fixed_point_con)
     end
+
     @constraint(m, fixed_point_con[t in 1:net.Ntimesteps],
-        m[:v][:, t] .== -m[:inv_Yll] * m[:Y_l0] * v0 .+ m[:inv_Yll] * diagm(conj(v_fp[:, t]))^-1 * conj(s_fp[t, :])
+        m[:v][:, t] .== -m[:inv_Yll] * m[:Y_l0] * v0 
+            .+ m[:inv_Yll] * diagm(conj(v_fp[:, t]))^-1 * conj(s_fp[t, :] .+ m[:s][:, t])
     )
+
     # document the constraints
     # TODO update dimensions once the todo about the 1 in the last dimension is addressed
     c = m[:fixed_point_con][1][m[:ll_terminals][1], 1]  # time step 1
@@ -130,8 +192,10 @@ function build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{F
         set_start_value(real(v[term, t]), real(v0[term.phase]))
         set_start_value(imag(v[term, t]), imag(v0[term.phase]))
     end
+
+    add_complex_terminal_power_variable(m, net, ll_terminals)
+    # constraining s to zero for now, up to user to update
     
-    # TODO s variable
     add_or_update_fixed_point_constraint(m, net, v_fp)
 
     nothing
