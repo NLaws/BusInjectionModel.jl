@@ -78,6 +78,15 @@ function add_or_update_fixed_point_constraint(
     @constraint(m, fixed_point_con[t in 1:net.Ntimesteps],
         m[:v][:, t] .== -m[:inv_Yll] * m[:Y_l0] * v0 .+ m[:inv_Yll] * diagm(conj(v_fp[:, t]))^-1 * conj(s_fp[t, :])
     )
+    # document the constraints
+    # TODO update dimensions once the todo about the 1 in the last dimension is addressed
+    c = m[:fixed_point_con][1][m[:ll_terminals][1], 1]  # time step 1
+    net.constraint_info[:bus_power_injection_constraints] = CommonOPF.ConstraintInfo(
+        :fixed_point_con,
+        "fixed point voltage equation",
+        typeof(MOI.get(m, MOI.ConstraintSet(), c)),
+        (CommonOPF.TimeDimension, CommonOPF.BusTerminalDimension),
+    )
 
     nothing
 end

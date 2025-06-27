@@ -35,3 +35,25 @@ The math underlying the model is as follows:
 \quad \forall j \in \mathcal{N}
 ```
 For the nomenclature see TODO.
+
+
+## `FixedPointLinear` models
+The `FixedPointLinear` multiphase model is built by passing a `JuMP.Model`, `Network{MultiPhase}`, and the
+`FixedPointLinear` type to [`build_bim_rectangular!`](@ref).
+
+```@example imports
+net = CommonOPF.Network_IEEE13()
+m = JuMP.Model()
+
+build_bim_rectangular!(m, net, FixedPointLinear)
+println("Variable information:")
+CommonOPF.print_var_info(net)
+println("Constraint information:")
+CommonOPF.print_constraint_info(net)
+```
+
+The math underlying the model is as follows:
+```math
+\boldsymbol v = -\boldsymbol Y_{LL}^{-1} Y_{L0} \boldsymbol v_0 + Y_{LL}^{-1} \text{diag}(\boldsymbol v_{FP}^*)^{-1} \boldsymbol s^*
+```
+For the nomenclature see TODO.
