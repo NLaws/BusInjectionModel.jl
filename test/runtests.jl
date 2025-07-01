@@ -125,7 +125,7 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
                 Dict(
                     :bus => "2",
                     :is_PV_bus => true,
-                    :voltage_pu => [1.05],
+                    :voltage_series_pu => [1.05],
                     :kws1 => [0.0006661]
                 )
             ]

@@ -129,8 +129,7 @@ function add_or_update_fixed_point_constraint(
     # delete existing constraints
     if :fixed_point_con in keys(m.obj_dict)
         for term in m[:ll_terminals], t in 1:net.Ntimesteps
-            # TODO? should not have matrix in last dimension?
-            JuMP.delete(m, m[:fixed_point_con][t][term, t])
+            JuMP.delete(m, m[:fixed_point_con][t][term])
         end
         delete!(m.obj_dict, :fixed_point_con)
     end
@@ -141,8 +140,7 @@ function add_or_update_fixed_point_constraint(
     )
 
     # document the constraints
-    # TODO update dimensions once the todo about the 1 in the last dimension is addressed
-    c = m[:fixed_point_con][1][m[:ll_terminals][1], 1]  # time step 1
+    c = m[:fixed_point_con][1][m[:ll_terminals][1]]  # time step 1
     net.constraint_info[:bus_power_injection_constraints] = CommonOPF.ConstraintInfo(
         :fixed_point_con,
         "fixed point voltage equation",

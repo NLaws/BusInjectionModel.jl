@@ -180,7 +180,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     @constraint(m, [t in 1:T], v_ang[net.substation_bus][t] == 0.0)
     
     # generator_busses are P-V busses: q_gen variable added and voltage set to
-    # net[j][:Generator].voltage_pu
+    # net[j][:Generator].voltage_series_pu
     gen_busses = generator_busses(net)
     if !isempty(gen_busses)
         add_time_vector_variables!(m, net, :q_gen, gen_busses)
@@ -247,7 +247,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
             @constraint(m, [t in 1:T],
                 q[j][t] == m[:q_gen][j][t] + imag(sj[t])
             )
-            @constraint(m, [t in 1:T], v_mag[j][t] == net[j][:Generator].voltage_pu[t])
+            @constraint(m, [t in 1:T], v_mag[j][t] == net[j][:Generator].voltage_series_pu[t])
         else
             @constraint(m, [t in 1:T],
                 p[j][t] == real(sj[t])
