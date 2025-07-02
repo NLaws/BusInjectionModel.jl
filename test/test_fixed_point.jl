@@ -64,6 +64,61 @@
             end
         end
     end
+end
 
+
+@testset "singlephase fixed point" begin
+    # compare the fixed point voltages to the unrelaxed model voltages
+
+    m = JuMP.Model(HiGHS.Optimizer)
+    JuMP.set_silent(m)
+    net = CPF.dss_to_Network(SINGLE_PHASE_IEEE13_DSS_PATH)
+    net.v0 = 1.0491702837604866
+    net.Vbase = 4160 / sqrt(3)
+    net.Sbase = 1e6
+    net.Zbase = net.Vbase^2 / net.Sbase
+
+    build_bim_rectangular!(m, net, FixedPointLinear)
+
+    @objective(m, Min, sum(real(m[:v][term, t]) for term in m[:ll_terminals], t in 1:net.Ntimesteps))
+
+    BusInjectionModel.solve_fixed_point_to_tol(m, net, 1e-4)
+
+    v_fp = abs.(value.(m[:v]).data)
+    v_fp_by_bus = Dict()
+    for (term, val) in zip(m[:ll_terminals], v_fp)
+        v_fp_by_bus[term.bus] = val
+    end
+
+    # create the unrelaxed solution
+    m2 = Model(Ipopt.Optimizer)
+    set_optimizer_attribute(m2, "print_level", 0)
+
+    build_bim_rectangular!(m2, net, Unrelaxed)
+    M = 1e7
+    @constraint(m2, [t in 1:net.Ntimesteps], M >= real(m2[:s0][t]) >= -M)
+    @constraint(m2, [t in 1:net.Ntimesteps], M >= imag(m2[:s0][t]) >= -M)
+    @constraint(m2, [b in CPF.busses(net), t in 1:net.Ntimesteps], 
+        1.1 >= imag(m2[:v][b][t]) >= -1.1
+    )
+    @constraint(m2, [b in CPF.busses(net), t in 1:net.Ntimesteps], 
+        1.1 >= real(m2[:v][b][t]) >= 0.8
+    )
+    @objective(m2, Min, sum( real(m2[:s0][t])^2 + imag(m2[:s0][t])^2  for t in 1:net.Ntimesteps) )
+    optimize!(m2)
+    
+    @test termination_status(m2) in [MOI.OPTIMAL, MOI.ALMOST_OPTIMAL, MOI.LOCALLY_SOLVED]
+
+    r = CPF.opf_results(m2, net)
+        
+    # remove time indices from results for convenience
+    vs = Dict(b => abs.(vv[1]) for (b, vv) in pairs(r[:v]))
+        
+    for b in keys(vs)
+        if b == net.substation_bus
+            continue
+        end
+        @test abs(vs[b] - v_fp_by_bus[b]) < 1e-3
+    end
 
 end

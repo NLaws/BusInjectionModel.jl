@@ -9,7 +9,7 @@
 """
     add_complex_terminal_voltage_variable(
         m::JuMP.Model, 
-        net::Network{MultiPhase}, 
+        net::Network, 
         trmnls::Vector{CommonOPF.BusTerminal},
     )
 
@@ -17,7 +17,7 @@ Add a variable with symbol `:v` for the complex voltage indexed on `trmnls` and 
 """
 function add_complex_terminal_voltage_variable(
         m::JuMP.Model, 
-        net::Network{MultiPhase}, 
+        net::Network, 
         trmnls::Vector{CommonOPF.BusTerminal},
     )
     @variable(m, v[trmnls, 1:net.Ntimesteps], set=ComplexPlane())
@@ -35,7 +35,7 @@ end
 """
     add_complex_terminal_power_variable(
         m::JuMP.Model, 
-        net::Network{MultiPhase}, 
+        net::Network, 
         trmnls::Vector{CommonOPF.BusTerminal},
     )
 
@@ -45,7 +45,7 @@ Add an `:s` variable to the model. If the `net.bounds` for `s` missing the defau
 """
 function add_complex_terminal_power_variable(
         m::JuMP.Model, 
-        net::Network{MultiPhase}, 
+        net::Network, 
         trmnls::Vector{CommonOPF.BusTerminal},
     )
     @variable(m, s[trmnls, 1:net.Ntimesteps], set=ComplexPlane())
@@ -107,7 +107,7 @@ end
 """
      add_or_update_fixed_point_constraint(
         m::JuMP.Model, 
-        net::Network{MultiPhase}, 
+        net::Network, 
         v_fp::Matrix{ComplexF64},
     )
 
@@ -116,7 +116,7 @@ then the existing constraints are deleted first.
 """
 function add_or_update_fixed_point_constraint(
         m::JuMP.Model, 
-        net::Network{MultiPhase}, 
+        net::Network, 
         v_fp::Matrix{ComplexF64},
     )
 
@@ -153,11 +153,11 @@ end
 
 
 """
-    build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{FixedPointLinear})
+    build_bim_rectangular!(m::JuMP.Model, net::Network, ::Val{FixedPointLinear})
 
 Build the fixed point linear model.
 """
-function build_bim_rectangular!(m::JuMP.Model, net::Network{MultiPhase}, ::Val{FixedPointLinear})
+function build_bim_rectangular!(m::JuMP.Model, net::Network, ::Val{FixedPointLinear})
     Y, y_terminals = Ysparse(net)
     # N = size(Y, 1)
     m[:y_terminals] = y_terminals
@@ -205,7 +205,7 @@ function max_abs_diff(v1::AbstractMatrix, v2::AbstractMatrix)
 end
 
 
-function solve_fixed_point_to_tol(m::JuMP.Model, net::Network{MultiPhase}, tol::Float64=1e-3, max_iter::Int=10)
+function solve_fixed_point_to_tol(m::JuMP.Model, net::Network, tol::Float64=1e-3, max_iter::Int=10)
 
     vdiff = tol + 1.0
     iter = 1

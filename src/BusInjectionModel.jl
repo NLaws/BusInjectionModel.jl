@@ -15,7 +15,7 @@ An enum with values:
 2. `Unrelaxed`
 """
 @enum ModelType begin
-    FixedPointLinear  # only SinglePhase
+    FixedPointLinear
     Unrelaxed
 end
 
@@ -30,7 +30,6 @@ export
 
 include("single_phase_model.jl")
 include("multi_phase_model.jl")
-include("multi_phase_linear_model.jl")
-# include("single_phase_fpl_model.jl")
+include("fixed_point_linear_model.jl")
 
 end
