@@ -152,10 +152,11 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         (CommonOPF.BusDimension, CommonOPF.TimeDimension)
     )
 
-    # voltage angles start at zero, magnitudes at 1.0
+    # voltages start at substation voltage
+    v0 = substation_voltage(net)
     for b in setdiff(busses(net), [net.substation_bus]), t in 1:T
 
-        JuMP.set_start_value(v_ang[b][t], 0.0)
+        JuMP.set_start_value(v_ang[b][t], angle(v0[1]))
         if !ismissing(net.bounds.v_lower_ang)
             JuMP.set_lower_bound(v_ang[b][t], net.bounds.v_lower_ang)
         end
@@ -164,7 +165,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         end
 
         if !(b in generator_busses(net))
-            JuMP.set_start_value(v_mag[b][t], 1.0)
+            JuMP.set_start_value(v_mag[b][t], abs(v0[1]))
             if !ismissing(net.bounds.v_upper_mag)
                 JuMP.set_upper_bound(v_mag[b][t], net.bounds.v_upper_mag)
             end
@@ -176,8 +177,8 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     end
 
     # slack bus voltage and variables
-    @constraint(m, [t in 1:T], v_mag[net.substation_bus][t] == net.v0)
-    @constraint(m, [t in 1:T], v_ang[net.substation_bus][t] == 0.0)
+    @constraint(m, [t in 1:T], v_mag[net.substation_bus][t] == abs(v0[1]))
+    @constraint(m, [t in 1:T], v_ang[net.substation_bus][t] == angle(v0[1]))
     
     # generator_busses are P-V busses: q_gen variable added and voltage set to
     # net[j][:Generator].voltage_series_pu
