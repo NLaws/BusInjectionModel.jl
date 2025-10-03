@@ -187,7 +187,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         add_time_vector_variables!(m, net, :q_gen, gen_busses)
         push!(net.var_names, :q_gen)
     end
-
+    # TODO finalize CommonOPF.Generator parameters and add constraints for capabilities
 
     m[:bus_real_power_injection_constraints] = @constraint(
         m, [j in busses(net), t in 1:T],
@@ -232,7 +232,9 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     )
 
     # set the power injections to loads (can be zero) and include generators as applicable
-    # TODO maybe should not model Generators in CommonOPF? Only implemented in this model so far
+    # TODO document these constraints
+    m[:pj_constraints] = Dict()
+    m[:qj_constraints] = Dict()
     for j in busses(net)
 
         if j == net.substation_bus  # slack bus
@@ -242,18 +244,18 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         sj = sj_per_unit(j, net)
 
         if j in gen_busses
-            @constraint(m, [t in 1:T],
+            m[:pj_constraints][j] = @constraint(m, [t in 1:T],
                 p[j][t] == net[j][:Generator].kws1[t] * 1e3 / net.Sbase + real(sj[t])
             )
-            @constraint(m, [t in 1:T],
+            m[:qj_constraints][j] = @constraint(m, [t in 1:T],
                 q[j][t] == m[:q_gen][j][t] + imag(sj[t])
             )
             @constraint(m, [t in 1:T], v_mag[j][t] == net[j][:Generator].voltage_series_pu[t])
         else
-            @constraint(m, [t in 1:T],
+            m[:pj_constraints][j] = @constraint(m, [t in 1:T],
                 p[j][t] == real(sj[t])
             )
-            @constraint(m, [t in 1:T],
+            m[:qj_constraints][j] = @constraint(m, [t in 1:T],
                 q[j][t] == imag(sj[t])
             )
         end

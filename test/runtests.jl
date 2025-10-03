@@ -230,6 +230,38 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
         
     end
 
+    # @testset "IEEE 118 Single Phase" begin
+    # TODO why adding gen real power constraint makes IEEE 118 problem infeasible?
+    # can include gen real power if remove the gen v_mag constraints, but then get nutty voltages
+    #     net = CPF.Network_IEEE118()
+    #     # m = JuMP.Model(HiGHS.Optimizer)
+    #     m = JuMP.Model(Ipopt.Optimizer)
+    #     # JuMP.set_silent(m)
+    #     # build_bim_rectangular!(m, net, FixedPointLinear)
+
+    #     net.bounds.v_upper_mag = 1.1
+    #     net.bounds.v_lower_mag = 0.8
+    #     net.bounds.v_upper_ang = π
+    #     net.bounds.v_lower_ang = -π
+    #     build_bim_polar!(m, net, Unrelaxed)
+
+    #     optimize!(m)
+
+    #     v_mag =  value.([(values(m[:v_mag])...)...])
+
+    #     pj =  value.([(values(m[:pj])...)...])
+
+    #     q_gen =  value.([(values(m[:q_gen])...)...])
+
+    #     # @objective(m, Min, sum(real(m[:v][term, t]) for term in m[:ll_terminals], t in 1:net.Ntimesteps))
+
+    #     # using Logging
+    #     # global_logger(ConsoleLogger(stderr, Logging.Debug))
+
+    #     # BusInjectionModel.solve_fixed_point_to_tol(m, net)
+
+    # end
+
 #     @testset "IEEE 8500 Node" begin
 #         # PROBLEM IS INFEASIBLE
 #         net = CPF.Network_IEEE8500()
