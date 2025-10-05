@@ -20,6 +20,8 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
 
 @testset "BusInjectionModel.jl" begin
 
+    include("test_dc_model.jl")
+
     include("test_fixed_point.jl")
 
     # @testset "IEEE13 wye only fixed point linear" begin
@@ -82,7 +84,7 @@ MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.
 
     end
 
-    @testset  "McCalley ISU example: single-phase, 3-bus, polar voltage" begin
+    @testset "McCalley ISU example: single-phase, 3-bus, polar voltage" begin
         # three busses in a triangle: a slack bus, a PV generator bus, and a PQ load bus
 
         netdict = Dict(

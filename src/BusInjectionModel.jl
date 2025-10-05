@@ -13,10 +13,12 @@ using Printf
 An enum with values:
 1. `FixedPointLinear`
 2. `Unrelaxed`
+3. `DC` (single phase polar only)
 """
 @enum ModelType begin
     FixedPointLinear
     Unrelaxed
+    DC
 end
 
 
@@ -25,9 +27,11 @@ export
     build_bim_rectangular!,
     solve_fixed_point_to_tol,
     FixedPointLinear,
-    Unrelaxed
+    Unrelaxed,
+    DC
 
 
+include("dc_model.jl")
 include("single_phase_model.jl")
 include("multi_phase_model.jl")
 include("fixed_point_linear_model.jl")

@@ -1,4 +1,5 @@
 @testset "multiphase fixed point" begin
+    # compare the fixed point voltages to the unrelaxed model voltages
 
     m = JuMP.Model(HiGHS.Optimizer)
     JuMP.set_silent(m)
