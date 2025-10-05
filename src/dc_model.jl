@@ -53,11 +53,11 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     @constraint(m, v_ang[net.substation_bus, :] .== 0.0)
 
     # net power in network must be zero (load balance)
-    @constraint(m, [t in 1:T], sum(pj[:, t]) == 0.0)
+    m[:load_balance] = @constraint(m, [t in 1:T], sum(pj[:, t]) == 0.0)
 
     m[:bus_real_power_injection_constraints] = @constraint(
         m, [t in 1:T],
-        p[:, t] .== B * v_ang[:,t]
+        p[:, t] .== -B * v_ang[:,t]
     )
 
     # set the power injections to loads (can be zero) and include generators as applicable
@@ -75,22 +75,23 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
             p_gen = sum(values(m[:p_gen][j]))
         end
 
+        # order of this constraint determines sign of JuMP.shadow_price, beware
         m[:pj_constraints][j] = @constraint(m, [t in 1:T],
-            p[j,t] == p_load[t] + p_gen[t]
+            0.0 == p[j,t] - p_load[t] - p_gen[t]
         )
 
     end
 
     m[:line_limits] = Dict()
+    m[:line_flow] = Dict()
     for e in edges(net)
+        i,j = indexin(e, y_busses)
+        m[:line_flow][e] = @expression(m, [t in 1:T], B[i,j] * (v_ang[e[1], t] - v_ang[e[2], t]))
         if net[e] isa CommonOPF.Conductor && !ismissing(net[e].amps_limit)
-            i,j = indexin(e, y_busses)
             m[:line_limits][e] = @constraint(m, [t in 1:T],
-                -net[e].amps_limit <= B[i,j] * (v_ang[e[1], t] - v_ang[e[2], t]) <= net[e].amps_limit
+                -net[e].amps_limit <=  m[:line_flow][e][t] <= net[e].amps_limit
             )
-
         end
     end
-
-
+    nothing
 end
