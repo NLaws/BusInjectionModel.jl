@@ -84,12 +84,48 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
 
     m[:line_limits] = Dict()
     m[:line_flow] = Dict()
+
     for e in edges(net)
         i,j = indexin(e, y_busses)
+
         m[:line_flow][e] = @expression(m, [t in 1:T], B[i,j] * (v_ang[e[1], t] - v_ang[e[2], t]))
+
         if net[e] isa CommonOPF.Conductor && !ismissing(net[e].amps_limit)
             m[:line_limits][e] = @constraint(m, [t in 1:T],
                 -net[e].amps_limit <=  m[:line_flow][e][t] <= net[e].amps_limit
+            )
+        elseif net[e] isa CommonOPF.ParallelConductor
+
+            if all(ismissing((c.amps_limit) for c in net[e].conductors))
+                # no line limits
+                continue
+            end
+
+            if !(length(net[e].conductors) == 2)
+                @warn "Not setting line constraints for $(net[e]). Only 2 parallel conductors are handled."
+                continue
+            end
+
+            c1 = net[e].conductors[1]
+            c2 = net[e].conductors[2]
+
+            # TODO need a different model when the conductor impedances are not equal?
+            if !(CommonOPF.susceptance(c1, CommonOPF.SinglePhase) == CommonOPF.susceptance(c2, CommonOPF.SinglePhase))
+                @warn "Parallel conductors without equal susceptance are not handled"
+                continue
+            end
+
+            total_limit = 0.0
+            if ismissing(c1.amps_limit) && !ismissing(c2.amps_limit)
+                total_limit = 2 * c2.amps_limit
+            elseif !ismissing(c1.amps_limit) && ismissing(c2.amps_limit)
+                total_limit = 2 * c1.amps_limit
+            else
+                total_limit = 2 * minimum([c1.amps_limit, c2.amps_limit])
+            end
+            
+            m[:line_limits][e] = @constraint(m, [t in 1:T],
+                -total_limit <=  m[:line_flow][e][t] <= total_limit
             )
         end
     end
