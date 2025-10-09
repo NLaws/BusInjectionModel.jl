@@ -88,27 +88,39 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     for e in edges(net)
         i,j = indexin(e, y_busses)
 
-        m[:line_flow][e] = @expression(m, [t in 1:T], B[i,j] * (v_ang[e[1], t] - v_ang[e[2], t]))
+        if net[e] isa CommonOPF.Conductor
 
-        if net[e] isa CommonOPF.Conductor && !ismissing(net[e].amps_limit)
-            m[:line_limits][e] = @constraint(m, [t in 1:T],
-                -net[e].amps_limit <=  m[:line_flow][e][t] <= net[e].amps_limit
-            )
+            m[:line_flow][e] = @expression(m, [t in 1:T], B[i,j] * (v_ang[e[1], t] - v_ang[e[2], t]))
+
+            if !ismissing(net[e].amps_limit)
+                m[:line_limits][e] = @constraint(m, [t in 1:T],
+                    -net[e].amps_limit <=  m[:line_flow][e][t] <= net[e].amps_limit
+                )
+            end
+
         elseif net[e] isa CommonOPF.ParallelConductor
             # we apply individual conductor limits as available
             # NOTE that the total susceptance of the conductors in edge `e` is accounted for in
             # matrix `B` above
+            m[:line_flow][e] = []
             m[:line_limits][e] = []
+
             for cond in net[e].conductors
-                if ismissing(cond.amps_limit)
-                    continue
-                end
                 bij = CommonOPF.susceptance(cond, CommonOPF.SinglePhase)
-                push!(m[:line_limits][e],
-                    @constraint(m, [t in 1:T],
-                        -cond.amps_limit <= bij * (v_ang[e[1], t] - v_ang[e[2], t]) <= cond.amps_limit
+
+                push!(m[:line_flow][e], 
+                    @expression(m, [t in 1:T],
+                        bij * (v_ang[e[1], t] - v_ang[e[2], t])
                     )
                 )
+
+                if !ismissing(cond.amps_limit)
+                    push!(m[:line_limits][e],
+                        @constraint(m, [t in 1:T],
+                            -cond.amps_limit <= m[:line_flow][e][t] <= cond.amps_limit
+                        )
+                    )
+                end
             end
         end
     end
