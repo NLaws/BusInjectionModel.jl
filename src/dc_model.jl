@@ -102,7 +102,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
             # we apply individual conductor limits as available
             # NOTE that the total susceptance of the conductors in edge `e` is accounted for in
             # matrix `B` above
-            m[:line_flow][e] = []
+            m[:line_flow][e] = Dict()
             m[:line_limits][e] = []
 
             for (idx, cond) in enumerate(net[e].conductors)
@@ -113,10 +113,8 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
                     idx = cond.name
                 end
 
-                push!(m[:line_flow][e], 
-                    @expression(m, [t in 1:T],
-                        bij * (v_ang[e[1], t] - v_ang[e[2], t])
-                    )
+                m[:line_flow][e][idx] = @expression(m, [t in 1:T],
+                    bij * (v_ang[e[1], t] - v_ang[e[2], t])
                 )
 
                 if !ismissing(cond.amps_limit)
