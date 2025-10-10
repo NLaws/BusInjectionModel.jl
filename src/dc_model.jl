@@ -84,7 +84,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
 
     m[:line_limits] = Dict()
     m[:line_flow] = Dict()
-
+    # fill in line_flow expressions and limit them as applicable
     for e in edges(net)
         i,j = indexin(e, y_busses)
 
@@ -105,8 +105,13 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
             m[:line_flow][e] = []
             m[:line_limits][e] = []
 
-            for (i, cond) in enumerate(net[e].conductors)
+            for (idx, cond) in enumerate(net[e].conductors)
                 bij = CommonOPF.susceptance(cond, CommonOPF.SinglePhase)
+
+                # we use cond.name as a key in m[:line_flow][e] if the name is not missing
+                if !(ismissing(cond.name))
+                    idx = cond.name
+                end
 
                 push!(m[:line_flow][e], 
                     @expression(m, [t in 1:T],
@@ -117,7 +122,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
                 if !ismissing(cond.amps_limit)
                     push!(m[:line_limits][e],
                         @constraint(m, [t in 1:T],
-                            -cond.amps_limit <= m[:line_flow][e][i][t] <= cond.amps_limit
+                            -cond.amps_limit <= m[:line_flow][e][idx][t] <= cond.amps_limit
                         )
                     )
                 end
