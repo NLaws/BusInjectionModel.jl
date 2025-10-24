@@ -67,3 +67,24 @@ The math underlying the model is as follows:
 &\angle v_{\text{substation bus}} = 0
 \end{aligned}
 ```
+
+## `DC` Model
+```@example imports
+net = CommonOPF.Network_IEEE5()
+m = JuMP.Model()
+
+build_bim_polar!(m, net, DC)
+println("Variable information:")
+CommonOPF.print_var_info(net)
+println("Constraint information:")
+CommonOPF.print_constraint_info(net)
+
+```
+The math underlying the model is as follows:
+```math
+\boldsymbol p_j = -\boldsymbol B \boldsymbol \theta_j 
+```
+where
+```math
+B = \text{imag}(Y)
+```
