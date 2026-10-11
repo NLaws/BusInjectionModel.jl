@@ -49,9 +49,27 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         (CommonOPF.BusDimension, CommonOPF.TimeDimension)
     )
 
-    # TODO document the constraints
+    net.constraint_info[:reference_angle] = CommonOPF.ConstraintInfo(
+        :reference_angle,
+        "voltage angle at the substation bus fixed to zero",
+        MOI.EqualTo{Float64},
+        (CommonOPF.TimeDimension,)
+    )
+    net.constraint_info[:load_balance] = CommonOPF.ConstraintInfo(
+        :load_balance,
+        "total net real power injection in the network equals zero",
+        MOI.EqualTo{Float64},
+        (CommonOPF.TimeDimension,)
+    )
+    net.constraint_info[:bus_real_power_injection_constraints] = CommonOPF.ConstraintInfo(
+        :bus_real_power_injection_constraints,
+        "net real power injection at each bus equals the negative susceptance matrix times voltage angles",
+        MOI.EqualTo{Float64},
+        (CommonOPF.TimeDimension, CommonOPF.BusDimension)
+    )
+
     # reference angle set to zero
-    @constraint(m, v_ang[net.substation_bus, :] .== 0.0)
+    m[:reference_angle] = @constraint(m, v_ang[net.substation_bus, :] .== 0.0)
 
     # net power in network must be zero (load balance)
     m[:load_balance] = @constraint(m, [t in 1:T], sum(pj[:, t]) == 0.0)
