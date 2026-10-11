@@ -49,6 +49,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         (CommonOPF.BusDimension, CommonOPF.TimeDimension)
     )
 
+    # TODO document the constraints
     # reference angle set to zero
     @constraint(m, v_ang[net.substation_bus, :] .== 0.0)
 
@@ -61,7 +62,6 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     )
 
     # set the power injections to loads (can be zero) and include generators as applicable
-    # TODO document these constraints
     m[:pj_constraints] = Dict()
     for j in y_busses
 

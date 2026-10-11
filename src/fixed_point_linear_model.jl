@@ -39,7 +39,7 @@ end
         trmnls::Vector{CommonOPF.BusTerminal},
     )
 
-Add an `:s` variable to the model. If the `net.bounds` for `s` missing the default bounds are zero
+Add an `:s` variable to the model. If the `net.bounds` for `s` are missing the default bounds are zero
 (to keep the model bounded).
 
 """
@@ -105,7 +105,7 @@ end
 
 
 """
-     add_or_update_fixed_point_constraint(
+    add_or_update_fixed_point_constraint(
         m::JuMP.Model, 
         net::Network, 
         v_fp::Matrix{ComplexF64},
@@ -175,6 +175,7 @@ function build_bim_rectangular!(m::JuMP.Model, net::Network, ::Val{FixedPointLin
     m[:inv_Yll] = inv(Matrix(Y_ll)) / net.Zbase
 
     N_ll = length(ll_indices)
+    # first v_fp is set to the substation voltage at all terminals
     v_fp = ones(N_ll, net.Ntimesteps) * 0im
     for (i, term) in enumerate(ll_terminals), t in 1:net.Ntimesteps
         v_fp[i, t] = v0[term.phase]
