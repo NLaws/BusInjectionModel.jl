@@ -16,11 +16,12 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     y_busses = [trm.bus for trm in trmnls]
     B = imag(Y)
     gen_busses = generator_busses(net)
+    batt_busses = battery_busses(net)
 
     @variable(m, pj[y_busses, 1:T])
     @variable(m, v_ang[y_busses, 1:T])
 
-    # busses can have 1 to many Generators
+    # busses can have 1 to many Generators and or Batteries
     # so we make variables with indices (Bus, Int, Time)
     m[:p_gen] = Dict{String, Dict{Int, Vector{JuMP.VariableRef}}}()
     if !isempty(gen_busses)
@@ -30,6 +31,63 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
                 m[:p_gen][b][i] = @variable(m, [1:T], lower_bound = gen.pmin, upper_bound = gen.pmax)
             end
         end
+        # document the generator bus power injection variable
+        # TODO a CommonOPF.Dimension for resources? The last dimension here is an integer for the
+        # generator index but we could use a Generator.name if available
+        net.var_info[:p_gen] = CommonOPF.VariableInfo(
+            :p_gen,
+            "generator bus power injection ",
+            CommonOPF.RealPowerUnit,
+            (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+        )
+    end
+    m[:p_discharge] = Dict{String, Dict{Int, Vector{JuMP.VariableRef}}}()
+    m[:p_charge] = Dict{String, Dict{Int, Vector{JuMP.VariableRef}}}()
+    m[:soc] = Dict{String, Dict{Int, JuMP.Containers.DenseAxisArray{JuMP.VariableRef, 1}}}()
+    if !isempty(batt_busses)
+        for b in batt_busses
+            m[:p_discharge][b] = Dict{Int, Vector{JuMP.VariableRef}}()
+            m[:p_charge][b] = Dict{Int, Vector{JuMP.VariableRef}}()
+            m[:soc][b] = Dict{Int, JuMP.Containers.DenseAxisArray{JuMP.VariableRef, 1}}()
+            # TODO rather than for loop define constraints using a set of batteries if possible
+            for (i, batt) in enumerate(net[b][:Battery])
+                m[:p_discharge][b][i] = @variable(
+                    m, [1:T], lower_bound = 0, upper_bound = batt.pmax_kw * 1e3 / net.Sbase
+                )
+                m[:p_charge][b][i] = @variable(
+                    m, [1:T], lower_bound = 0, upper_bound = abs(batt.pmin_kw) * 1e3 / net.Sbase
+                )
+                m[:soc][b][i] = @variable(
+                    m, [0:T], 
+                    lower_bound = batt.soc_min_kwh / net.Sbase, 
+                    upper_bound = batt.soc_max_kwh / net.Sbase
+                )
+
+                @constraint(m, m[:soc][b][i][0] == batt.soc_init_kwh / net.Sbase)
+
+                @constraint(m, [t = 1:T],
+                    m[:soc][b][i][t] == m[:soc][b][i][t-1] + 
+                        (1 / net.time_steps_per_hour) * (
+                            batt.charge_efficiency * m[:p_charge][b][i][t] -
+                            m[:p_discharge][b][i][t] / batt.discharge_efficiency
+                        )
+                )
+            end
+        end
+        # document the battery charge and discharge variables
+        net.var_info[:p_discharge] = CommonOPF.VariableInfo(
+            :p_discharge,
+            "non-negative battery discharge power injection, upper-bounded by the battery's maximum discharge rate",
+            CommonOPF.RealPowerUnit,
+            (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+        )
+        net.var_info[:p_charge] = CommonOPF.VariableInfo(
+            :p_charge,
+            "non-negative battery charge power injection, upper-bounded by the absolute value of the battery's minimum charge rate",
+            CommonOPF.RealPowerUnit,
+            (CommonOPF.BusDimension, CommonOPF.TimeDimension)
+        )
+        @warn "Battery SOC evolution is defined via constraints but no binaries have been added to prevent simultaneous charging and discharging"
     end
 
     p = m[:pj]
@@ -92,10 +150,18 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
             # generator dispatch decisions summed across the bus
             p_gen = sum(values(m[:p_gen][j]))
         end
+        p_discharge = zeros(T)
+        p_charge = zeros(T)
+        if j in batt_busses
+            # battery discharge decisions summed across the bus
+            p_discharge = sum(values(m[:p_discharge][j]))
+            # battery charge decisions summed across the bus
+            p_charge = sum(values(m[:p_charge][j]))
+        end
 
         # order of this constraint determines sign of JuMP.shadow_price, beware
         m[:pj_constraints][j] = @constraint(m, [t in 1:T],
-            0.0 == p[j,t] - p_load[t] - p_gen[t]
+            0.0 == p[j,t] - p_load[t] - p_gen[t] - p_discharge[t] + p_charge[t]
         )
 
     end

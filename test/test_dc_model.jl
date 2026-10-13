@@ -69,3 +69,75 @@
     @test isapprox(line_flows[("D", "E")], -240.00; atol = 0.01)
 
 end
+
+
+@testset "DC OPF with battery storage" begin
+    
+    net = CPF.Network_IEEE5()
+
+    net.Ntimesteps = 6
+    for b in CPF.real_load_busses(net)
+        load = net[b][:Load]
+        load.kws1 = fill(first(load.kws1), net.Ntimesteps)
+        load.kvars1 = fill(first(load.kvars1), net.Ntimesteps)
+    end
+
+    battery = CPF.Battery(
+        name = "four-hour-bess",
+        bus = "B",
+        pmin_kw = -100.0,
+        pmax_kw = 100.0,
+        charge_efficiency = 0.9,
+        discharge_efficiency = 0.9,
+        soc_max_kwh = 400.0,
+        soc_min_kwh = 0.0,
+        soc_init_kwh = 0.0
+    )
+    
+    net["B"][:Battery] = [battery]
+    m = JuMP.Model(HiGHS.Optimizer)
+    JuMP.set_silent(m)
+
+    build_bim_polar!(m, net, DC)
+
+    T = net.Ntimesteps
+
+    @variables(m, begin
+        z[t = 1:T], Bin
+    end)
+
+
+    # @constraint(m, [t in 1:T], p[t] ⟂ g[t]) 
+    Mp = -1*battery.pmin_kw    # upper bound for charging
+    Mg = battery.pmax_kw       # upper bound for discharging
+    @constraint(m, [t in 1:T], m[:p_charge][battery.bus][1][t] <= Mp * z[t])
+    @constraint(m, [t in 1:T], m[:p_discharge][battery.bus][1][t] <= Mg * (1 - z[t]))
+
+
+    @objective(m, Min,
+        sum(
+            m[:p_gen][j][i][t] * gen.price_points[1] 
+            for j in CPF.generator_busses(net), 
+                (i,gen) in enumerate(net[j][:Generator]), 
+                t in 1:net.Ntimesteps
+        )
+    )
+
+    optimize!(m)
+
+    @test JuMP.termination_status(m) == JuMP.OPTIMAL
+    # no BESS usage with flat offers and load
+    @test isapprox(
+        JuMP.value.(m[:p_charge]["B"][1]),
+        zeros(net.Ntimesteps);
+        atol = 1e-7,
+    )
+    @test isapprox(
+        JuMP.value.(m[:p_discharge]["B"][1]),
+        zeros(net.Ntimesteps);
+        atol = 1e-7,
+    )
+
+    # now change a generators offer curve to incentivize BESS usage
+    # do we have time varying gen offers yet?
+end
