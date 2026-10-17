@@ -16,6 +16,7 @@ CPF = BusInjectionModel.CommonOPF
 
 SINGLE_PHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "ieee13_makePosSeq", "Master.dss")
 MULTIPHASE_IEEE13_DSS_PATH = joinpath("data", "ieee13", "IEEE13Nodeckt_no_trfxs.dss")
+COPPER_PLATE_MODEL_PATH = joinpath("data", "copper_plate", "network.yaml")
 
 
 @testset "BusInjectionModel.jl" begin

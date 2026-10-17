@@ -22,13 +22,14 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
     @variable(m, v_ang[y_busses, 1:T])
 
     # busses can have 1 to many Generators and or Batteries
-    # so we make variables with indices (Bus, Int, Time)
-    m[:p_gen] = Dict{String, Dict{Int, Vector{JuMP.VariableRef}}}()
+    # so we make variables with indices (Bus, String, Time)
+    m[:p_gen] = Dict{String, Dict{String, Vector{JuMP.VariableRef}}}()
     if !isempty(gen_busses)
         for b in gen_busses
-            m[:p_gen][b] = Dict{Int, Vector{JuMP.VariableRef}}()
+            m[:p_gen][b] = Dict{String, Vector{JuMP.VariableRef}}()
             for (i, gen) in enumerate(net[b][:Generator])
-                m[:p_gen][b][i] = @variable(m, [1:T], lower_bound = gen.pmin, upper_bound = gen.pmax)
+                key = ismissing(gen.name) ? string(i) : gen.name
+                m[:p_gen][b][key] = @variable(m, [1:T], lower_bound = gen.pmin, upper_bound = gen.pmax)
             end
         end
         # document the generator bus power injection variable
@@ -41,35 +42,36 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
             (CommonOPF.BusDimension, CommonOPF.TimeDimension)
         )
     end
-    m[:p_discharge] = Dict{String, Dict{Int, Vector{JuMP.VariableRef}}}()
-    m[:p_charge] = Dict{String, Dict{Int, Vector{JuMP.VariableRef}}}()
-    m[:soc] = Dict{String, Dict{Int, JuMP.Containers.DenseAxisArray{JuMP.VariableRef, 1}}}()
+    m[:p_discharge] = Dict{String, Dict{String, Vector{JuMP.VariableRef}}}()
+    m[:p_charge] = Dict{String, Dict{String, Vector{JuMP.VariableRef}}}()
+    m[:soc] = Dict{String, Dict{String, JuMP.Containers.DenseAxisArray{JuMP.VariableRef, 1}}}()
     if !isempty(batt_busses)
         for b in batt_busses
-            m[:p_discharge][b] = Dict{Int, Vector{JuMP.VariableRef}}()
-            m[:p_charge][b] = Dict{Int, Vector{JuMP.VariableRef}}()
-            m[:soc][b] = Dict{Int, JuMP.Containers.DenseAxisArray{JuMP.VariableRef, 1}}()
+            m[:p_discharge][b] = Dict{String, Vector{JuMP.VariableRef}}()
+            m[:p_charge][b] = Dict{String, Vector{JuMP.VariableRef}}()
+            m[:soc][b] = Dict{String, JuMP.Containers.DenseAxisArray{JuMP.VariableRef, 1}}()
             # TODO rather than for loop define constraints using a set of batteries if possible
             for (i, batt) in enumerate(net[b][:Battery])
-                m[:p_discharge][b][i] = @variable(
+                key = ismissing(batt.name) ? string(i) : batt.name
+                m[:p_discharge][b][key] = @variable(
                     m, [1:T], lower_bound = 0, upper_bound = batt.pmax_kw * 1e3 / net.Sbase
                 )
-                m[:p_charge][b][i] = @variable(
+                m[:p_charge][b][key] = @variable(
                     m, [1:T], lower_bound = 0, upper_bound = abs(batt.pmin_kw) * 1e3 / net.Sbase
                 )
-                m[:soc][b][i] = @variable(
+                m[:soc][b][key] = @variable(
                     m, [0:T], 
-                    lower_bound = batt.soc_min_kwh / net.Sbase, 
-                    upper_bound = batt.soc_max_kwh / net.Sbase
+                    lower_bound = batt.soc_min_kwh * 1e3 / net.Sbase,
+                    upper_bound = batt.soc_max_kwh * 1e3 / net.Sbase
                 )
 
-                @constraint(m, m[:soc][b][i][0] == batt.soc_init_kwh / net.Sbase)
+                @constraint(m, m[:soc][b][key][0] == batt.soc_init_kwh * 1e3 / net.Sbase)
 
                 @constraint(m, [t = 1:T],
-                    m[:soc][b][i][t] == m[:soc][b][i][t-1] + 
+                    m[:soc][b][key][t] == m[:soc][b][key][t-1] + 
                         (1 / net.time_steps_per_hour) * (
-                            batt.charge_efficiency * m[:p_charge][b][i][t] -
-                            m[:p_discharge][b][i][t] / batt.discharge_efficiency
+                            batt.charge_efficiency * m[:p_charge][b][key][t] -
+                            m[:p_discharge][b][key][t] / batt.discharge_efficiency
                         )
                 )
             end
@@ -89,9 +91,6 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
         )
         @warn "Battery SOC evolution is defined via constraints but no binaries have been added to prevent simultaneous charging and discharging"
     end
-
-    p = m[:pj]
-    v_ang = m[:v_ang]
 
     # document the variables
     net.var_info[:pj] = CommonOPF.VariableInfo(
@@ -134,7 +133,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
 
     m[:bus_real_power_injection_constraints] = @constraint(
         m, [t in 1:T],
-        p[:, t] .== -B * v_ang[:,t]
+        pj[:, t] .== -B * v_ang[:,t]
     )
 
     # set the power injections to loads (can be zero) and include generators as applicable
@@ -161,7 +160,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
 
         # order of this constraint determines sign of JuMP.shadow_price, beware
         m[:pj_constraints][j] = @constraint(m, [t in 1:T],
-            0.0 == p[j,t] - p_load[t] - p_gen[t] - p_discharge[t] + p_charge[t]
+            0.0 == pj[j,t] - p_load[t] - p_gen[t] - p_discharge[t] + p_charge[t]
         )
 
     end
