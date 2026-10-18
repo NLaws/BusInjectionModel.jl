@@ -74,6 +74,16 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
                             m[:p_discharge][b][key][t] / batt.discharge_efficiency
                         )
                 )
+                
+                @constraint(m, [t = 1:T],
+                    m[:soc][b][key][t-1] + (1 / net.time_steps_per_hour) * batt.charge_efficiency * m[:p_charge][b][key][t]
+                    <= batt.soc_max_kwh * 1e3 / net.Sbase
+                )
+
+                @constraint(m, [t = 1:T],
+                    m[:soc][b][key][t-1] - (1 / net.time_steps_per_hour) / batt.discharge_efficiency * m[:p_discharge][b][key][t]
+                    >= batt.soc_min_kwh * 1e3 / net.Sbase
+                )
             end
         end
         # document the battery charge and discharge variables

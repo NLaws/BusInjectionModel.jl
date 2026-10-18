@@ -2,6 +2,7 @@ Network:
   substation_bus: b1
   Sbase: 1000
   Ntimesteps: 6
+  time_steps_per_hour: 0.25
 
 Conductor: []
 
@@ -26,8 +27,8 @@ Battery:
     name: battery
     pmax_kw: 200.0
     pmin_kw: -200.0
-    charge_efficiency: 0.95
-    discharge_efficiency: 0.95
+    charge_efficiency: 0.9
+    discharge_efficiency: 0.9
     soc_max_kwh: 800.0
     soc_min_kwh: 0.0
     soc_init_kwh: 0.0
