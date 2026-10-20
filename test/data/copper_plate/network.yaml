@@ -4,8 +4,6 @@ Network:
   Ntimesteps: 6
   time_steps_per_hour: 0.25
 
-Conductor: []
-
 Load:
   - bus: b1
     kws1: [100.0, 200, 300, 300, 200, 100]
