@@ -245,7 +245,7 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
 
         if j in gen_busses
             m[:pj_constraints][j] = @constraint(m, [t in 1:T],
-                p[j][t] == net[j][:Generator].kws1[t] * 1e3 / net.Sbase + real(sj[t])
+                p[j][t] == net[j][:Generator].p1[t] / net.Sbase + real(sj[t])
             )
             m[:qj_constraints][j] = @constraint(m, [t in 1:T],
                 q[j][t] == m[:q_gen][j][t] + imag(sj[t])

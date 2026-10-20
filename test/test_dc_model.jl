@@ -78,20 +78,20 @@ end
     net.Ntimesteps = 6
     for b in CPF.real_load_busses(net)
         load = net[b][:Load]
-        load.kws1 = fill(first(load.kws1), net.Ntimesteps)
-        load.kvars1 = fill(first(load.kvars1), net.Ntimesteps)
+        load.p1 = fill(first(load.p1), net.Ntimesteps)
+        load.q1 = fill(first(load.q1), net.Ntimesteps)
     end
 
     battery = CPF.Battery(
         name = "four-hour-bess",
         bus = "B",
-        pmin_kw = -100.0,
-        pmax_kw = 100.0,
+        pmin = -100.0,
+        pmax = 100.0,
         charge_efficiency = 0.9,
         discharge_efficiency = 0.9,
-        soc_max_kwh = 400.0,
-        soc_min_kwh = 0.0,
-        soc_init_kwh = 0.0
+        soc_max = 400.0,
+        soc_min = 0.0,
+        soc_init = 0.0
     )
     
     net["B"][:Battery] = [battery]
@@ -108,8 +108,8 @@ end
 
 
     # @constraint(m, [t in 1:T], p[t] ⟂ g[t]) 
-    Mp = -1*battery.pmin_kw    # upper bound for charging
-    Mg = battery.pmax_kw       # upper bound for discharging
+    Mp = -1*battery.pmin    # upper bound for charging
+    Mg = battery.pmax       # upper bound for discharging
     @constraint(m, [t in 1:T], m[:p_charge][battery.bus][battery.name][t] <= Mp * z[t])
     @constraint(m, [t in 1:T], m[:p_discharge][battery.bus][battery.name][t] <= Mg * (1 - z[t]))
 
@@ -158,9 +158,8 @@ end
     ess_offers = [43.1, 50.0, 0.0, 0.0, 49.9, 49.9]
 
     # TODO getter for renewable generators and setting time varying limits
-    @constraint(m, [t in 1:net.Ntimesteps], m[:p_gen]["b1"]["renewable"][t] <= net["b1"][:Generator][1].kws1[t])
+    @constraint(m, [t in 1:net.Ntimesteps], m[:p_gen]["b1"]["renewable"][t] <= net["b1"][:Generator][1].p1[t])
 
-    # TODO CommonOPF.Generator.pmax -> pmax_kw, pmin -> pmin_kw
     @objective(m, Min,
         (1/net.time_steps_per_hour) * (
             sum(m[:p_gen]["b1"]["renewable"][t] for t in 1:net.Ntimesteps) * renewable_price +

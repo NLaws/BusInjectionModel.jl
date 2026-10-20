@@ -120,8 +120,8 @@ COPPER_PLATE_MODEL_PATH = joinpath("data", "copper_plate", "network.yaml")
             :Load => [
                 Dict(
                     :bus => "3",
-                    :kws1 => [.0028653],
-                    :kvars1 => [.0012244]
+                    :p1 => [2.8653],
+                    :q1 => [1.2244]
                 ),
             ],
             :Generator => [
@@ -129,7 +129,7 @@ COPPER_PLATE_MODEL_PATH = joinpath("data", "copper_plate", "network.yaml")
                     :bus => "2",
                     :is_PV_bus => true,
                     :voltage_series_pu => [1.05],
-                    :kws1 => [0.0006661]
+                    :p1 => [0.6661]
                 )
             ]
         )
@@ -160,8 +160,8 @@ COPPER_PLATE_MODEL_PATH = joinpath("data", "copper_plate", "network.yaml")
         @test v_mag[3] ≈ 0.9499 rtol = tol
         @test v_ang[3] * 180/pi ≈ -10.01 rtol = tol
 
-        @test p[2] ≈ net["2"][:Generator].kws1[1] * 1e3
-        @test q[3] ≈ -net["3"][:Load].kvars1[1] * 1e3
+        @test p[2] ≈ net["2"][:Generator].p1[1]
+        @test q[3] ≈ -net["3"][:Load].q1[1]
 
     end
     

@@ -1,7 +1,9 @@
 # BusInjectionModel Change log
 
-## dev
+## 0.2
 - add classic DC model `build_bim_polar(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Val{DC})`
+    - allows for `CommonOPF.Battery`
+- BREAKING update to CommonOPF v0.6
 
 ## v0.1.2
 - add fixed point linear model, multi and single phase

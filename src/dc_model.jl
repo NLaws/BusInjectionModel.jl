@@ -54,18 +54,18 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
             for (i, batt) in enumerate(net[b][:Battery])
                 key = ismissing(batt.name) ? string(i) : batt.name
                 m[:p_discharge][b][key] = @variable(
-                    m, [1:T], lower_bound = 0, upper_bound = batt.pmax_kw * 1e3 / net.Sbase
+                    m, [1:T], lower_bound = 0, upper_bound = batt.pmax / net.Sbase
                 )
                 m[:p_charge][b][key] = @variable(
-                    m, [1:T], lower_bound = 0, upper_bound = abs(batt.pmin_kw) * 1e3 / net.Sbase
+                    m, [1:T], lower_bound = 0, upper_bound = abs(batt.pmin) / net.Sbase
                 )
                 m[:soc][b][key] = @variable(
                     m, [0:T], 
-                    lower_bound = batt.soc_min_kwh * 1e3 / net.Sbase,
-                    upper_bound = batt.soc_max_kwh * 1e3 / net.Sbase
+                    lower_bound = batt.soc_min / net.Sbase,
+                    upper_bound = batt.soc_max / net.Sbase
                 )
 
-                @constraint(m, m[:soc][b][key][0] == batt.soc_init_kwh * 1e3 / net.Sbase)
+                @constraint(m, m[:soc][b][key][0] == batt.soc_init / net.Sbase)
 
                 @constraint(m, [t = 1:T],
                     m[:soc][b][key][t] == m[:soc][b][key][t-1] + 
@@ -77,12 +77,12 @@ function build_bim_polar!(m::JuMP.AbstractModel, net::Network{SinglePhase}, ::Va
                 
                 @constraint(m, [t = 1:T],
                     m[:soc][b][key][t-1] + (1 / net.time_steps_per_hour) * batt.charge_efficiency * m[:p_charge][b][key][t]
-                    <= batt.soc_max_kwh * 1e3 / net.Sbase
+                    <= batt.soc_max / net.Sbase
                 )
 
                 @constraint(m, [t = 1:T],
                     m[:soc][b][key][t-1] - (1 / net.time_steps_per_hour) / batt.discharge_efficiency * m[:p_discharge][b][key][t]
-                    >= batt.soc_min_kwh * 1e3 / net.Sbase
+                    >= batt.soc_min / net.Sbase
                 )
             end
         end
